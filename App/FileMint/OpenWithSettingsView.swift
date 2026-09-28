@@ -61,9 +61,15 @@ struct OpenWithSettingsView: View {
                                 set: { placement in
                                     guard let index = preferences.applications.firstIndex(where: { $0.id == app.id }) else { return }
                                     preferences.applications[index].placement = placement
+                                }), terminalMode: Binding(
+                                get: { preferences.applications.first(where: { $0.id == app.id })?.terminalOpenMode ?? .applicationDefault },
+                                set: { mode in
+                                    guard let index = preferences.applications.firstIndex(where: { $0.id == app.id }) else { return }
+                                    preferences.applications[index].terminalOpenMode = mode
                                 }), canMoveUp: index > 0, canMoveDown: index < preferences.applications.count - 1,
                                 moveUp: { preferences.move(app.id, by: -1) },
                                 moveDown: { preferences.move(app.id, by: 1) },
+                                repair: addApplication,
                                 remove: { preferences.applications.removeAll { $0.id == app.id } },
                                 beginDrag: { withAnimation(dragAnimation) { draggedApplicationID = app.id } })
                                 .padding(17)
@@ -133,10 +139,12 @@ private struct OpenWithApplicationRow: View {
     let application: OpenWithApplication
     let language: AppLanguage
     @Binding var placement: OpenWithMenuPlacement
+    @Binding var terminalMode: TerminalOpenMode
     let canMoveUp: Bool
     let canMoveDown: Bool
     let moveUp: () -> Void
     let moveDown: () -> Void
+    let repair: () -> Void
     let remove: () -> Void
     let beginDrag: () -> Void
     @State private var icon: NSImage?
@@ -169,30 +177,34 @@ private struct OpenWithApplicationRow: View {
                     Text(location).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle).help(location)
                 }
             }.font(.system(size: 10)).frame(maxWidth: .infinity, alignment: .leading)
+            if TerminalAdapter(bundleIdentifier: application.bundleIdentifier) != nil {
+                Picker(text(.terminalOpenMode), selection: $terminalMode) {
+                    Text(text(.terminalFollowApp)).tag(TerminalOpenMode.applicationDefault)
+                    Text(text(.terminalNewTab)).tag(TerminalOpenMode.newTab)
+                    Text(text(.terminalNewWindow)).tag(TerminalOpenMode.newWindow)
+                }.settingsMenu(width: language.resolved() == .chinese ? 124 : 142)
+                    .accessibilityLabel("\(application.name) — \(text(.terminalOpenMode))")
+                    .accessibilityIdentifier("openWith.\(application.id).terminalMode")
+            }
             Picker(text(.toolMenuPosition), selection: $placement) {
                 Text(text(.openWithSubmenu)).tag(OpenWithMenuPlacement.submenu)
                 Text(text(.toolMainMenu)).tag(OpenWithMenuPlacement.main)
             }.settingsMenu(width: language.resolved() == .chinese ? 119 : 138)
                 .accessibilityLabel("\(application.name) — \(text(.toolMenuPosition))")
                 .accessibilityIdentifier("openWith.\(application.id).placement")
-            HStack(spacing: 2) {
-                Button(action: moveUp) { Image(systemName: "chevron.up").frame(width: 17, height: 28) }
-                    .disabled(!canMoveUp)
-                    .help(text(.moveUp))
-                    .accessibilityLabel("\(text(.moveUp)) \(application.name)")
+            Menu {
+                Button(text(.moveUp), action: moveUp).disabled(!canMoveUp)
                     .accessibilityIdentifier("openWith.\(application.id).moveUp")
-                Button(action: moveDown) { Image(systemName: "chevron.down").frame(width: 17, height: 28) }
-                    .disabled(!canMoveDown)
-                    .help(text(.moveDown))
-                    .accessibilityLabel("\(text(.moveDown)) \(application.name)")
+                Button(text(.moveDown), action: moveDown).disabled(!canMoveDown)
                     .accessibilityIdentifier("openWith.\(application.id).moveDown")
-            }.buttonStyle(.plain).foregroundStyle(.secondary)
-            Button(action: remove) {
-                Image(systemName: "minus.circle").font(.system(size: 15)).frame(width: 24, height: 28)
-            }.buttonStyle(.plain).foregroundStyle(.secondary)
-                .help(String(format: text(.openWithRemove), application.name))
-                .accessibilityLabel(String(format: text(.openWithRemove), application.name))
-                .accessibilityIdentifier("openWith.\(application.id).remove")
+                Divider()
+                Button(text(.openWithRepair), action: repair)
+                Button(String(format: text(.openWithRemove), application.name), action: remove)
+                    .accessibilityIdentifier("openWith.\(application.id).remove")
+            } label: {
+                Image(systemName: "ellipsis").frame(width: 24, height: 28)
+            }.menuStyle(.borderlessButton)
+                .accessibilityLabel("\(application.name) — \(text(.openWithMore))")
         }
         .task(id: application) { await refreshPresentation() }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in

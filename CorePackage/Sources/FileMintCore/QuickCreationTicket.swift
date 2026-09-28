@@ -1,10 +1,27 @@
 import Foundation
 
+public enum QuickCreationIntent: String, Codable, Sendable {
+    case template, clipboardImage, clipboardText
+}
+
 public struct QuickCreationTicket: Codable, Sendable {
     public let directory: URL
     public let templateID: String
     public let issuedAt: Date
     public var clipboardImage: Bool? = nil
+    public var intent: QuickCreationIntent? = nil
+
+    public var resolvedIntent: QuickCreationIntent? {
+        if let intent {
+            switch intent {
+            case .template: return clipboardImage != true && !templateID.isEmpty ? .template : nil
+            case .clipboardImage: return clipboardImage == true && templateID.isEmpty ? .clipboardImage : nil
+            case .clipboardText: return clipboardImage != true && templateID.isEmpty ? .clipboardText : nil
+            }
+        }
+        if clipboardImage == true { return templateID.isEmpty ? .clipboardImage : nil }
+        return templateID.isEmpty ? nil : .template
+    }
 }
 
 /// A URL contains only an unpredictable, expiring identifier. Actual requests
@@ -20,7 +37,13 @@ public struct QuickCreationTicketStore: Sendable {
     }
 
     public func enqueueClipboardImage(directory destination: URL, now: Date = Date()) throws -> URL {
-        try enqueue(QuickCreationTicket(directory: destination, templateID: "", issuedAt: now, clipboardImage: true))
+        try enqueue(QuickCreationTicket(directory: destination, templateID: "", issuedAt: now,
+                                        clipboardImage: true, intent: .clipboardImage))
+    }
+
+    public func enqueueClipboardText(directory destination: URL, now: Date = Date()) throws -> URL {
+        try enqueue(QuickCreationTicket(directory: destination, templateID: "", issuedAt: now,
+                                        clipboardImage: nil, intent: .clipboardText))
     }
 
     private func enqueue(_ ticket: QuickCreationTicket) throws -> URL {
@@ -50,7 +73,10 @@ public struct QuickCreationTicketStore: Sendable {
         let data = try Data(contentsOf: claimed)
         let ticket = try JSONDecoder().decode(QuickCreationTicket.self, from: data)
         guard (0...60).contains(now.timeIntervalSince(ticket.issuedAt)), ticket.directory.isFileURL,
-              ticket.clipboardImage == true || preferences.templates.contains(where: { $0.id == ticket.templateID && $0.isEnabled }) else { return nil }
+              let intent = ticket.resolvedIntent else { return nil }
+        if intent == .template && !preferences.templates.contains(where: { $0.id == ticket.templateID && $0.isEnabled }) {
+            return nil
+        }
         guard FolderScope.containsResolvedDirectory(ticket.directory, in: preferences.monitoredFolderURLs) else { return nil }
         return ticket
     }

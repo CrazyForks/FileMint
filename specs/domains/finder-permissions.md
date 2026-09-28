@@ -24,6 +24,10 @@ Part of the [FileMint SPEC](../SPEC.md). This file owns the behavior below; othe
   unconfigured folder through a symlink. A selected symlink itself belongs to its
   parent folder and may still be moved or deleted as a link. Resolution failure
   grants no scope.
+- Open with App may also appear for a captured background container directory.
+  Item menus keep their complete selected-item snapshot. Recheck resolved scope
+  and target type before a directory open; a later Finder location never replaces
+  the captured target.
 - Folder selection uses NSOpenPanel. Persist security-scoped bookmarks alongside
   paths, restore access on launch, and release access when folders are removed.
 - Preferences are an atomically replaced private JSON file in

@@ -59,6 +59,9 @@ final class FinderSync: FIFinderSync {
         custom.tag = tags[0]
         if preferences.newFileMenuPlacement == .main { custom.image = root.image }
         creationMenu.addItem(custom)
+        let pasteText = NSMenuItem(title: text(.newFileFromClipboard), action: #selector(pasteTextFile(_:)), keyEquivalent: "")
+        pasteText.tag = actions.register([FileMenuAction(directory: directory, templateID: nil)])[0]
+        creationMenu.addItem(pasteText)
         let pasteImage = NSMenuItem(title: text(.pasteImageFile), action: #selector(pasteImageFile(_:)), keyEquivalent: "")
         pasteImage.tag = actions.register([FileMenuAction(directory: directory, templateID: nil)])[0]
         creationMenu.addItem(pasteImage)
@@ -138,15 +141,21 @@ final class FinderSync: FIFinderSync {
             item.submenu = resourceMenu
             menu.addItem(item)
         }
-        let applications = OpenWithPolicy.availableApplications(selection: selection,
-            isItemMenu: menuKind == .contextualMenuForItems, preferences: preferences)
+        let directoryValues = selection.count == 1
+            ? try? selection[0].resourceValues(forKeys: [.isDirectoryKey, .isPackageKey, .isSymbolicLinkKey, .isAliasFileKey]) : nil
+        let ordinaryDirectory = directoryValues?.isDirectory == true && directoryValues?.isPackage != true &&
+            directoryValues?.isSymbolicLink != true && directoryValues?.isAliasFile != true
+        let openTarget = OpenWithTargetPolicy.target(directory: directory, selection: selection,
+            isContainer: isContainer, selectedIsOrdinaryDirectory: ordinaryDirectory)
+        let applications = openTarget.map { OpenWithPolicy.availableApplications(target: $0, preferences: preferences) } ?? []
         let appLayout = OpenWithMenuLayout(applications: applications)
         let appMenu = NSMenu(title: text(.openWithApps))
         let appTags = actions.register(applications.map {
-            FileMenuAction(directory: directory, openWithApplication: $0.reference, selection: selection)
+            FileMenuAction(directory: directory, openWithApplication: $0.reference,
+                target: openTarget!, mode: $0.terminalOpenMode)
         })
         for (index, application) in applications.enumerated() {
-            let item = NSMenuItem(title: application.menuTitle(language: language),
+            let item = NSMenuItem(title: application.menuTitle(target: openTarget!, language: language),
                                  action: #selector(openWithApplication(_:)), keyEquivalent: "")
             item.image = FileToolAppearance.applicationImage(at: application.url)
             item.tag = appTags[index]
@@ -215,10 +224,10 @@ final class FinderSync: FIFinderSync {
     }
 
     @objc private func openWithApplication(_ item: NSMenuItem) {
-        guard let action = actions.take(item.tag), let application = action.openWithApplication else { return }
-        let selection = action.selection
+        guard let action = actions.take(item.tag), let application = action.openWithApplication,
+              let target = action.openWithTarget, let mode = action.openWithMode else { return }
         Task { @MainActor in
-            FinderActions.shared.openWith(application, selection: selection)
+            FinderActions.shared.openWith(application, target: target, mode: mode)
         }
     }
 
@@ -300,6 +309,11 @@ final class FinderSync: FIFinderSync {
         guard let action = actions.take(item.tag) else { return }
         Task { @MainActor in FinderActions.shared.pasteImage(in: action.directory) }
     }
+
+    @objc private func pasteTextFile(_ item: NSMenuItem) {
+        guard let action = actions.take(item.tag) else { return }
+        Task { @MainActor in FinderActions.shared.pasteText(in: action.directory) }
+    }
 }
 
 private final class LockedFavoriteCatalog: @unchecked Sendable {
@@ -334,13 +348,18 @@ private final class LockedFinderPreferences: @unchecked Sendable {
 private final class FinderActions {
     static let shared = FinderActions()
 
-    func openWith(_ application: OpenWithApplicationReference, selection: [URL]) {
-        guard OpenWithPolicy.application(for: application, selection: selection,
-            preferences: FileMintPreferencesStore().load()) != nil else {
+    func openWith(_ application: OpenWithApplicationReference, target: OpenWithTarget, mode: TerminalOpenMode) {
+        guard let configured = OpenWithPolicy.application(for: application, target: target,
+            preferences: FileMintPreferencesStore().load()), configured.terminalOpenMode == mode else {
             showError(OpenWithError.changedConfiguration, title: .openWithApps)
             return
         }
-        perform(.openWith(application: application, selection: selection), errorTitle: .openWithApps)
+        switch target {
+        case .selection(let selection):
+            perform(.openWith(application: application, selection: selection), errorTitle: .openWithApps)
+        case .directory(let directory):
+            perform(.openDirectory(application: application, directory: directory, mode: mode), errorTitle: .openWithApps)
+        }
     }
 
     func openPanel(in directory: URL) {
@@ -364,6 +383,17 @@ private final class FinderActions {
             do {
                 let url = try await Task.detached(priority: .userInitiated) {
                     try QuickCreationTicketStore().enqueueClipboardImage(directory: directory)
+                }.value
+                open(url, activate: true)
+            } catch { showError(error) }
+        }
+    }
+
+    func pasteText(in directory: URL) {
+        Task {
+            do {
+                let url = try await Task.detached(priority: .userInitiated) {
+                    try QuickCreationTicketStore().enqueueClipboardText(directory: directory)
                 }.value
                 open(url, activate: true)
             } catch { showError(error) }

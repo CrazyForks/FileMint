@@ -31,6 +31,7 @@ public enum AppLanguage: String, Codable, CaseIterable, Identifiable, Sendable {
 
 public enum FileMintTextKey: String, CaseIterable, Sendable {
     case pasteImageFile, clipboardImageHint, clipboardImageUnsupported, clipboardImageTooLarge, clipboardImageFailed
+    case newFileFromClipboard, clipboardTextUnsupported, clipboardTextTooLarge
     case imagePreview, imageFileName
     case defaultFileName, defaultTemplate, makeDefaultTemplate, selectedTemplate, noTemplate
     case importDocumentTemplate, documentTemplate, documentTemplateHint, documentUnsupported
@@ -68,7 +69,10 @@ public enum FileMintTextKey: String, CaseIterable, Sendable {
     case resourceToolsHint
     case openWithApps, openWithAppsHint, openWithAppName, addApplication, openWithEmptyTitle
     case openWithEmptyHint, openWithMenuHint, openWithSubmenu, openWithChooseHint, openWithRemove
+    case terminalFollowApp, terminalNewTab, terminalNewWindow, terminalOpenMode
+    case openWithMore, openWithRepair
     case openWithInvalidApp, openWithUnavailableApp, openWithChanged, openWithMissingSelection, openWithFailed
+    case openWithMissingDirectory, openWithUnsupportedTerminal, openWithServiceUnavailable
     case openWithUnavailable, openWithConfiguredApps, openWithReorderHint
     case enableFileTools
     case fileToolsOffHint
@@ -269,6 +273,9 @@ public enum FileMintStrings {
         .lightAppearance: ("Light", "浅色"),
         .darkAppearance: ("Dark", "深色"),
         .pasteImageFile: ("Paste Image as File…", "图片粘贴为文件…"),
+        .newFileFromClipboard: ("New File from Clipboard…", "从剪贴板新建…"),
+        .clipboardTextUnsupported: ("Copy one text item, then try again. Copied files and images are not text drafts.", "请先拷贝一段文本再试。文件和图片不会转成文本草稿。"),
+        .clipboardTextTooLarge: ("Use text up to 8 MB in UTF-8.", "文本的 UTF-8 大小不能超过 8 MB。"),
         .clipboardImageHint: ("Save the copied image as PNG. Existing files get a new numbered name.", "将拷贝的图片保存为 PNG。同名时自动编号。"),
         .clipboardImageUnsupported: ("Copy one screenshot or image, then try again. File references and animated images are not supported.", "请先拷贝一张截图或图片，再试一次。暂不支持文件引用或动画图片。"),
         .clipboardImageTooLarge: ("Use an image up to 16 million pixels, 16,384 pixels per side and 64 MB.", "请选择不超过 1600 万像素、单边 16384 像素、64 MB 的图片。"),
@@ -298,12 +305,18 @@ public enum FileMintStrings {
         .favoriteLocations: ("Favorite Locations", "常用文件（夹）"),
         .resourceToolsHint: ("Convert, resize and process local images.", "转换格式、调整尺寸，处理本地图片。"),
         .openWithApps: ("Open with App", "使用 App 打开"),
-        .openWithAppsHint: ("Your go-to apps, right in Finder’s context menu.", "把常用 App，放进 Finder 右键菜单。"),
+        .terminalFollowApp: ("Follow App", "跟随终端"),
+        .terminalNewTab: ("New Tab", "新标签页"),
+        .terminalNewWindow: ("New Window", "新窗口"),
+        .terminalOpenMode: ("Open folders in", "打开目录时"),
+        .openWithMore: ("More actions", "更多操作"),
+        .openWithRepair: ("Choose App Again…", "重新选择 App…"),
+        .openWithAppsHint: ("Open selected files with an app, or open the current folder from its background menu.", "选中文件时使用 App 打开文件；在文件夹空白处打开当前目录。"),
         .openWithAppName: ("Open with %@", "使用「%@」打开"),
         .addApplication: ("Add App", "添加 App"),
         .openWithConfiguredApps: ("Applications", "应用列表"),
         .openWithEmptyTitle: ("Keep your favorite apps close", "添加常用 App"),
-        .openWithEmptyHint: ("Choose an app, then open selected files and folders with it from Finder.", "添加后，在 Finder 中选中文件或文件夹，右键即可使用它打开。"),
+        .openWithEmptyHint: ("Add an app to open selected items or the current folder from Finder.", "添加 App 后，可从 Finder 右键菜单打开选中项或当前文件夹。"),
         .openWithMenuHint: ("Submenu entries appear under Open with App. If none remain, the group is hidden.", "二级菜单收纳在「使用 App 打开」中；没有二级项目时，自动隐藏分组入口。"),
         .openWithSubmenu: ("Submenu", "二级菜单"),
         .openWithChooseHint: ("Choose apps to add to Finder’s context menu.", "选择要添加到 Finder 右键菜单的应用程序。"),
@@ -312,6 +325,9 @@ public enum FileMintStrings {
         .openWithUnavailableApp: ("This app is unavailable. Add it again in Open with App settings to update its location or access.", "此 App 已不可用。请在「使用 App 打开」中重新添加，更新位置或访问权限。"),
         .openWithChanged: ("The app or folder settings changed. Select the items and open the Finder menu again.", "应用或文件夹设置已更改，请重新选中项目并打开 Finder 右键菜单。"),
         .openWithMissingSelection: ("Some selected items are no longer available. Select the files or folders again.", "部分所选项目已不可用，请重新选择文件或文件夹。"),
+        .openWithMissingDirectory: ("This folder is unavailable. Open the Finder menu again.", "此目录已不可用，请重新打开 Finder 右键菜单。"),
+        .openWithUnsupportedTerminal: ("This terminal version cannot use the selected opening mode.", "此终端版本暂不支持所选打开方式。"),
+        .openWithServiceUnavailable: ("The terminal's folder service is unavailable. Re-add the app or check macOS Services settings.", "终端的文件夹服务不可用。请重新添加 App，或检查 macOS 的服务设置。"),
         .openWithFailed: ("The app could not open the selection. Check that it supports these files or folders and try again.", "无法使用此 App 打开所选项目。请确认它支持这些文件或文件夹后重试。"),
         .openWithUnavailable: ("Unavailable · add again to repair", "App 不可用 · 请重新添加"),
         .openWithReorderHint: ("Drag the handle to set app order in Finder. You can also use the arrow buttons.", "拖动把手调整 App 在 Finder 菜单中的顺序，也可使用上下按钮。"),

@@ -30,12 +30,20 @@ Load for: Configured applications, their Finder menu placement and opening selec
   empty state with Add App and explain where entries appear. Support Chinese,
   English, keyboard/accessibility navigation, light/dark appearance and minimum
   window size. An unavailable app remains removable and can be re-added to repair
-  its location; never silently launch a different app as a fallback.
+  its location; never silently launch a different app as a fallback. Keep menu
+  placement in the application rows; omit the simulated Finder menu preview and
+  its context switch from settings.
 
 ## Finder and opening
 
-- Offer entries only in item context menus with a nonempty, complete selection
-  of local files/folders in configured scope. Background, toolbar and sidebar
+The same configured App list and Finder group also serve a background container menu. A background action passes Finder's captured directory, while an item action preserves the complete selected item list and its order. A single selected ordinary folder uses the folder itself as a directory target; packages, symlinks, aliases, files and multiple selections keep the ordinary selection action. The menu never reuses a later Finder selection. Toolbar and sidebar menus do not gain this action. Directory targets must be local, within configured and resolved folder scope and still exist as directories when used.
+
+Terminal, iTerm2 Stable, Ghostty and Warp Stable are the initial recognized terminal identities. Recognition is by validated bundle identity and a supported adapter, never by display name. Adding an identified terminal defaults to New Tab; older saved entries and malformed mode values use Follow App. A terminal row shows Follow App, New Tab and New Window. Mode affects directory actions only; file selections retain the existing opening behavior. Each App still has one Finder menu item and one placement. A directory menu title shows the chosen terminal mode. An old menu whose saved mode changed must not silently perform the new mode.
+
+Terminal, iTerm2 and Ghostty use their published macOS folder Services with a private pasteboard. Warp uses its published action URL sent to the configured application. No shell command, simulated keystroke, user clipboard write or silent mode fallback is permitted. A successful dispatch is not proof that the terminal opened the requested folder; the actual working directory and window/tab mode require native acceptance for each adapter.
+
+- Offer entries for a nonempty, complete item selection of local files/folders
+  in configured scope and for an in-scope background container. Toolbar and sidebar
   contexts never reuse a previous selection. Files, folders and mixed selections
   are passed together in Finder order; the chosen app decides supported types.
 - Each configured entry appears exactly once as Open with <App> / 使用「App」打开,

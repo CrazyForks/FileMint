@@ -50,6 +50,7 @@ final class CustomFileSavePanelController: NSObject {
         in defaultDirectory: URL,
         preferences: FileMintPreferences,
         templateID: String? = nil,
+        initialText: String? = nil,
         imageData: Data? = nil,
         imagePreview: NSImage? = nil,
         documentTemplates: DocumentTemplateStore = DocumentTemplateStore()
@@ -58,6 +59,7 @@ final class CustomFileSavePanelController: NSObject {
             bringPanelForward(selectFileName: false)
             return
         }
+        guard initialText == nil || (imageData == nil && templateID == nil) else { return }
 
         templates = preferences.templates
         self.imageData = imageData
@@ -67,6 +69,7 @@ final class CustomFileSavePanelController: NSObject {
         revealAfterCreation = preferences.revealAfterCreation
         hasEditedFileName = false
         draft = CustomFileDraft(templates: templates, defaultTemplateIDs: preferences.defaultTemplateIDs)
+        if let initialText { draft.updateContent(initialText) }
         allOptions = FileFormatCatalog.options(from: templates)
         suggestions = allOptions
         if let option = allOptions.first(where: { $0.templateID == templateID }) {
@@ -94,7 +97,8 @@ final class CustomFileSavePanelController: NSObject {
             "io.github.daigua.filemint.custom-file"
         )
         creationPanel.onCreate = { [weak self] in self?.createRequestedFile(nil) }
-        creationPanel.title = FileMintStrings.text(imageData == nil ? .customNewFile : .pasteImageFile, language: language)
+        creationPanel.title = FileMintStrings.text(imageData != nil ? .pasteImageFile :
+            (draft.hasEditedContent ? .newFileFromClipboard : .customNewFile), language: language)
         creationPanel.titlebarAppearsTransparent = true
         creationPanel.backgroundColor = FileMintStyle.backgroundNS
         creationPanel.isReleasedWhenClosed = false

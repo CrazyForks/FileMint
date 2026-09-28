@@ -34,7 +34,18 @@ final class OpenWithSmoke: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         #if !OPEN_WITH_RECEIVER
         Task {
-            do { try await run(); print("PASS sandbox open-with: selection delivered, ticket consumed, sources and clipboard preserved"); exit(0) }
+            do {
+                if let mode = ProcessInfo.processInfo.environment["FILEMINT_TERMINAL_MODE"],
+                   let requested = TerminalOpenMode(rawValue: mode) {
+                    try await runTerminalService(mode: requested)
+                } else if ProcessInfo.processInfo.environment["FILEMINT_OPEN_WITH_APP"] == "code" {
+                    try await runExternalEditor()
+                } else {
+                    try await run()
+                    print("PASS sandbox open-with: selection and directory delivered, text capture, tickets, sources and clipboard preserved")
+                }
+                exit(0)
+            }
             catch { print("FAIL sandbox open-with: \(error)"); exit(1) }
         }
         #endif
@@ -52,7 +63,79 @@ final class OpenWithSmoke: NSObject, NSApplicationDelegate {
     }
 
     #if !OPEN_WITH_RECEIVER
+    private func runTerminalService(mode: TerminalOpenMode) async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("filemint-terminal-qa-\(UUID().uuidString)")
+        let folder = root.appendingPathComponent("空格 '\" # % ? : $ ; 🪴\nnext", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let kind = ProcessInfo.processInfo.environment["FILEMINT_TERMINAL_APP"] ?? "terminal"
+        let appURL = URL(fileURLWithPath: kind == "warp" ? "/Applications/Warp.app" :
+            "/System/Applications/Utilities/Terminal.app")
+        let app = try OpenWithApplicationAccess.capture(appURL)
+        let resolved = try OpenWithApplicationAccess.resolve(app)
+        let started = resolved.startAccessingSecurityScopedResource()
+        defer { if started { resolved.stopAccessingSecurityScopedResource() } }
+        try OpenWithApplicationAccess.validate(app, at: resolved)
+        try await TerminalDirectoryLauncher.open(folder, with: app, applicationURL: resolved, mode: mode)
+        print("REQUESTED sandbox \(kind) \(mode.rawValue): \(folder.path)")
+    }
+
+    private func runExternalEditor() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("filemint-editor-qa-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let app = try OpenWithApplicationAccess.capture(URL(fileURLWithPath: "/Applications/Visual Studio Code.app"))
+        var preferences = FileMintPreferences.default
+        preferences.monitoredFolderURLs = [folder]
+        preferences.openWith.add(app)
+        let file = folder.appendingPathComponent("preferences.json")
+        try FileMintPreferencesStore(fileURL: file).save(preferences)
+        let tickets = FileOperationTicketStore(directory: folder.appendingPathComponent("tickets"))
+        let ticket = try tickets.enqueue(.openDirectory(application: app.reference,
+            directory: folder, mode: .applicationDefault))
+        let coordinator = FileOperationCoordinator(store: PendingFileMoveStore(file: folder.appendingPathComponent("move.json")),
+            tickets: tickets, preferencesFile: file,
+            aliasAccessStore: DesktopAliasAccessStore(file: folder.appendingPathComponent("aliases.json")),
+            desktopDirectory: folder, resourceController: ResourceToolsController(preferencesFile: file))
+        self.coordinator = coordinator
+        coordinator.enqueue(ticket)
+        guard coordinator.isBusy else { throw SmokeFailure("Editor request did not hold busy guard") }
+        for _ in 0..<80 {
+            if !coordinator.isBusy { break }
+            try await Task.sleep(for: .milliseconds(125))
+        }
+        guard !coordinator.isBusy, try tickets.consume(ticket) == nil else {
+            throw SmokeFailure("Editor request or ticket did not finish")
+        }
+        print("REQUESTED sandbox code directory: \(folder.path)")
+    }
+
     private func run() async throws {
+        let textBoard = NSPasteboard.withUniqueName()
+        defer { textBoard.releaseGlobally() }
+        textBoard.clearContents()
+        let copied = "  中文 🪴\r\n{{fileName}}  "
+        guard textBoard.setString(copied, forType: .string),
+              try ClipboardTextReader.capture(from: textBoard) == copied else {
+            throw SmokeFailure("Explicit clipboard text was not captured verbatim")
+        }
+        textBoard.clearContents()
+        textBoard.setPropertyList(["/tmp/copied.txt"], forType: NSPasteboard.PasteboardType("NSFilenamesPboardType"))
+        textBoard.setString("wrong body", forType: .string)
+        do {
+            _ = try ClipboardTextReader.capture(from: textBoard)
+            throw SmokeFailure("Copied file reference was accepted as text")
+        } catch ClipboardTextError.unsupported {}
+
+        let unusualPath = URL(fileURLWithPath: "/tmp/空格 '#%? & 🪴", isDirectory: true)
+        for mode in [TerminalOpenMode.newTab, .newWindow] {
+            let url = try TerminalDirectoryLauncher.warpURL(for: unusualPath, mode: mode)
+            guard let parts = URLComponents(url: url, resolvingAgainstBaseURL: false),
+                  parts.scheme == "warp", parts.host == "action",
+                  parts.path == (mode == .newTab ? "/new_tab" : "/new_window"),
+                  parts.queryItems == [URLQueryItem(name: "path", value: unusualPath.path)] else {
+                throw SmokeFailure("Warp directory URL changed a literal path")
+            }
+        }
+
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("open-with-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -120,6 +203,21 @@ final class OpenWithSmoke: NSObject, NSApplicationDelegate {
               FileManager.default.fileExists(atPath: folder.path),
               NSPasteboard.general.changeCount == clipboardChangeCount else {
             throw SmokeFailure("Selection, ticket, source preservation or clipboard assertion failed")
+        }
+        try FileManager.default.removeItem(at: receipt)
+        let directoryTicket = try tickets.enqueue(.openDirectory(application: app.reference,
+            directory: folder, mode: .applicationDefault))
+        coordinator.enqueue(directoryTicket)
+        guard coordinator.isBusy else { throw SmokeFailure("Directory request did not hold busy guard") }
+        for _ in 0..<80 {
+            if !coordinator.isBusy && FileManager.default.fileExists(atPath: receipt.path) { break }
+            try await Task.sleep(for: .milliseconds(125))
+        }
+        guard !coordinator.isBusy else { throw SmokeFailure("Directory request did not finish") }
+        let directoryReceived = try JSONDecoder().decode([URL].self, from: Data(contentsOf: receipt))
+        guard directoryReceived == [folder], try tickets.consume(directoryTicket) == nil,
+              NSPasteboard.general.changeCount == clipboardChangeCount else {
+            throw SmokeFailure("Directory target, ticket or clipboard assertion failed")
         }
     }
     #endif

@@ -3,6 +3,49 @@
 Checked on 2026-09-14, macOS 26.6.2, Apple silicon. Minimum deployment target:
 macOS 13. Release bundles contain arm64 and x86_64 executables.
 
+## Clipboard text and directory opening QA — 2026-09-28
+
+Checked on macOS 27.2, Apple silicon, `c23ffc6` plus the uncommitted
+[clipboard/directory worktree](tasks/2026-09-28-clipboard-text-and-directory-tools.md).
+
+- `make verify` passed 168 Core tests, 14 image tests, 5 public Harness cases,
+  10 CLI regressions and the remaining offline checks. The unsigned Release
+  app/Finder extension built, and `git diff --check` passed. Logs are under
+  `build/qa-2026-09-28/` (ignored local files).
+- A separate Developer ID-signed local QA DMG passed nested signature,
+  entitlement, bundle, checksum and `hdiutil verify` checks. It was not
+  notarized, installed or published; its SHA-256 is recorded beside the DMG.
+- An isolated native UI fixture used a named pasteboard to prefill the creation
+  panel. Creating `QA-clipboard.txt` wrote exactly 29 expected UTF-8 bytes,
+  including CRLF, Unicode, surrounding spaces and literal `{{fileName}}`.
+  A second cancelled draft created no file. The user's general pasteboard was
+  not used for this test.
+- The signed disposable sandbox fixture delivered a complete file/folder
+  selection and a directory through the production coordinator, preserving
+  the source and general pasteboard. Terminal 2.15 and Warp Stable returned
+  success for both New Tab and New Window. Read-only shell inspection confirmed
+  each request's actual cwd, including a path with quotes, punctuation, emoji
+  and a newline. It does not establish tab/window counts or routing under
+  duplicate Services registrations.
+- VS Code 1.138.0 displayed the exact temporary QA folder as its workspace
+  root. In the isolated settings UI, Terminal's mode and menu-position pickers
+  appeared on one row, the preview updated when the mode changed, and VS Code
+  had no terminal picker. Chinese/light and English/dark were inspected.
+- Native QA exposed a settings-window resize from 960×680 to 960×1253 after
+  changing language. Disabling `NSHostingView`'s implicit sizing in the
+  product window kept the isolated regression fixture at 960×680 through
+  language and appearance changes. The actual installed product window was
+  not replaced or run with this change.
+- Not run: current-source installed Finder callbacks, signed product-window
+  behavior, iTerm2/Ghostty (not installed), tab/window counts (terminal UI
+  inspection is blocked by the computer-use tool), duplicate/disabled
+  Services, smaller/multiple displays, and macOS 13 runtime. The installed
+  `/Applications/FileMint.app` is a different binary from this worktree; no
+  install or publication was performed. The owner chose to keep the installed
+  app unchanged for this round and will provide iTerm2/Ghostty, macOS 13 and
+  manual tab/window-count observations later. After packaging, PluginKit still
+  listed only the installed Finder extension.
+
 ## Favorite availability, Finder locate and groups — 2026-09-28
 
 Checked on macOS 27.2, Apple silicon, `684dba2` plus the uncommitted favorite

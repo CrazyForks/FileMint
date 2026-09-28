@@ -88,18 +88,20 @@ final class DesignUISmoke: NSObject, NSApplicationDelegate {
             desktopDirectory: root, resourceController: resourceController)
         if let icon = NSImage(contentsOf: root.appendingPathComponent("AppIcon.png")) { NSApp.applicationIconImage = icon }
         let updater = UpdateModel()
-        window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 900, height: 650),
+        window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1040, height: 720),
             styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
         window.title = "FileMint Design QA"
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
         window.backgroundColor = FileMintStyle.backgroundNS
-        window.contentMinSize = NSSize(width: 840, height: 600)
+        window.contentMinSize = NSSize(width: 960, height: 680)
         window.isReleasedWhenClosed = false
         let coordinator = coordinator!
-        window.contentView = NSHostingView(rootView: ContentView(launchResourceTool: { coordinator.chooseImages(for: $0) },
+        let hostingView = NSHostingView(rootView: ContentView(launchResourceTool: { coordinator.chooseImages(for: $0) },
             favoriteLocations: favoriteModel)
             .environmentObject(model).environmentObject(updater))
+        hostingView.sizingOptions = []
+        window.contentView = hostingView
         window.center()
         window.makeKeyAndOrderFront(nil)
         if CommandLine.arguments.contains("--minimum") { minimum() }
@@ -110,6 +112,7 @@ final class DesignUISmoke: NSObject, NSApplicationDelegate {
                                   ("Follow System", #selector(systemAppearance)),
                                   ("Minimum size", #selector(minimum)), ("Creation panel", #selector(creation)),
                                   ("Clipboard image fixture", #selector(clipboardImage)),
+                                  ("Clipboard text fixture", #selector(clipboardText)),
                                   ("Quit fixture", #selector(quit))] {
             let item = NSMenuItem(title: title, action: selector, keyEquivalent: "")
             item.target = self
@@ -121,8 +124,23 @@ final class DesignUISmoke: NSObject, NSApplicationDelegate {
         NSApp.activate(ignoringOtherApps: true)
         print("READY isolated FileMint UI: \(root.path)")
         if CommandLine.arguments.contains("--check-appearance") { try checkAppearance(store: store, root: root) }
+        if CommandLine.arguments.contains("--check-window-size") {
+            Task { @MainActor in
+                do {
+                    try await checkWindowSize()
+                    print("PASS window size: 960x680 survives language and appearance changes")
+                    exit(0)
+                } catch {
+                    print("FAIL window size: \(error)")
+                    exit(1)
+                }
+            }
+        }
         if CommandLine.arguments.contains("--clipboard-image") {
             clipboardImage()
+        }
+        if CommandLine.arguments.contains("--clipboard-text") {
+            clipboardText()
         }
         if CommandLine.arguments.contains("--document-preview"),
            let template = model.preferences.templates.first(where: { $0.document != nil }) {
@@ -134,18 +152,52 @@ final class DesignUISmoke: NSObject, NSApplicationDelegate {
     @objc private func language() {
         model.preferences.language = model.preferences.language == .chinese ? .english : .chinese
         model.save()
+        recordWindowSize("language")
     }
     @objc private func appearance() {
         model.setAppearance(NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? .light : .dark)
+        recordWindowSize("appearance")
     }
     @objc private func systemAppearance() { model.setAppearance(.system) }
-    @objc private func minimum() { window.setContentSize(NSSize(width: 840, height: 600)) }
+    @objc private func minimum() {
+        window.setContentSize(NSSize(width: 960, height: 680))
+        recordWindowSize("minimum")
+    }
     @objc private func creation() {
         if let folder = model.preferences.monitoredFolderURLs.first {
             CustomFileSavePanelController.shared.present(in: folder, preferences: model.preferences, documentTemplates: model.documentTemplates)
         }
     }
     @objc private func quit() { NSApp.terminate(nil) }
+
+    private func recordWindowSize(_ event: String) {
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(300))
+            guard let root = Bundle.main.object(forInfoDictionaryKey: "FixturePath") as? String else { return }
+            let size = window.contentRect(forFrameRect: window.frame).size
+            try? "\(event) \(size.width) \(size.height)".write(
+                toFile: URL(fileURLWithPath: root).appendingPathComponent("qa-window-size.txt").path,
+                atomically: true, encoding: .utf8)
+        }
+    }
+
+    private func checkWindowSize() async throws {
+        window.setContentSize(NSSize(width: 960, height: 680))
+        try await assertWindowSize()
+        model.preferences.language = .english
+        guard model.save() else { throw ResourceError.failed }
+        try await assertWindowSize()
+        model.setAppearance(.dark)
+        try await assertWindowSize()
+    }
+
+    private func assertWindowSize() async throws {
+        try await Task.sleep(for: .milliseconds(300))
+        let size = window.contentRect(forFrameRect: window.frame).size
+        guard abs(size.width - 960) < 1, abs(size.height - 680) < 1 else {
+            throw ResourceError.failed
+        }
+    }
 
     private func checkAppearance(store: FileMintPreferencesStore, root: URL) throws {
         let original = model.preferences
@@ -188,6 +240,19 @@ final class DesignUISmoke: NSObject, NSApplicationDelegate {
             clipboard.releaseGlobally()
             print("READY clipboard image draft using isolated pasteboard")
         }
+    }
+
+    @objc private func clipboardText() {
+        guard let root = model.preferences.monitoredFolderURLs.first else { return }
+        let board = NSPasteboard.withUniqueName()
+        defer { board.releaseGlobally() }
+        board.clearContents()
+        let expected = "  中文 🪴\r\n{{fileName}}  "
+        guard board.setString(expected, forType: .string) else { return }
+        model.presentClipboardText(in: root, pasteboard: board)
+        board.clearContents()
+        _ = board.setString("Changed after capture", forType: .string)
+        print("READY clipboard text draft using isolated pasteboard: \(root.path)")
     }
 
     private func fixture(_ url: URL, variant: Int) throws {

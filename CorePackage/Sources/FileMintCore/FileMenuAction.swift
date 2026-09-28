@@ -23,6 +23,8 @@ public struct FileMenuAction: Equatable, Sendable {
     public let tool: FileTool?
     public var resourceTool: ResourceTool? = nil
     public var openWithApplication: OpenWithApplicationReference? = nil
+    public var openWithTarget: OpenWithTarget? = nil
+    public var openWithMode: TerminalOpenMode? = nil
     public var favoriteAction: FavoriteMenuAction? = nil
     public let selection: [URL]
     public let moveBatchID: UUID?
@@ -64,7 +66,20 @@ public struct FileMenuAction: Equatable, Sendable {
         self.templateID = nil
         self.tool = nil
         self.openWithApplication = openWithApplication
+        self.openWithTarget = .selection(selection)
         self.selection = selection
+        self.moveBatchID = nil
+    }
+
+    public init(directory: URL, openWithApplication: OpenWithApplicationReference,
+                target: OpenWithTarget, mode: TerminalOpenMode) {
+        self.directory = directory
+        self.templateID = nil
+        self.tool = nil
+        self.openWithApplication = openWithApplication
+        self.openWithTarget = target
+        self.openWithMode = mode
+        self.selection = target.urls
         self.moveBatchID = nil
     }
 

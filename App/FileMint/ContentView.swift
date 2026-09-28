@@ -42,7 +42,7 @@ struct ContentView: View {
                 }.font(.system(size: 10)).foregroundStyle(.secondary).padding(.horizontal, 30).padding(.vertical, 18)
             }.background(FileMintStyle.background)
         }
-        .frame(minWidth: 840, minHeight: 600).tint(FileMintStyle.accent)
+        .tint(FileMintStyle.accent)
         .buttonStyle(MintButtonStyle())
         .ignoresSafeArea(.container, edges: .top)
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
@@ -112,6 +112,8 @@ struct ContentView: View {
                         Text("⌘N").foregroundStyle(.secondary)
                     }.padding(.vertical, 3)
                 }.keyboardShortcut("n").buttonStyle(MintButtonStyle())
+                Button(model.text(.newFileFromClipboard)) { model.newFileFromClipboard() }
+                    .font(.callout).buttonStyle(.plain)
                 Button(model.text(.pasteImageFile)) { model.pasteImageFile() }
                     .font(.callout).buttonStyle(.plain)
                 Button { model.selectedPane = .folders } label: {

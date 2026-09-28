@@ -333,7 +333,10 @@ final class PreferencesModel: ObservableObject {
     }
 
     func newFile() {
-        if CustomFileSavePanelController.shared.focusExistingPanel() { return }
+        if CustomFileSavePanelController.shared.focusExistingPanel() || isPreparingCreation { return }
+        isPreparingCreation = true
+        pendingCreationCount += 1
+        defer { isPreparingCreation = false; pendingCreationCount -= 1 }
         let picker = NSOpenPanel()
         picker.canChooseFiles = false
         picker.canChooseDirectories = true
@@ -381,19 +384,65 @@ final class PreferencesModel: ObservableObject {
     }
 
     private(set) var pendingCreationCount = 0
-    private var preparingClipboardImage = false
+    private var isPreparingCreation = false
+
+    func newFileFromClipboard() {
+        presentClipboardText(in: nil)
+    }
+
+    func presentClipboardText(in directory: URL?, pasteboard: NSPasteboard = .general) {
+        guard !CustomFileSavePanelController.shared.focusExistingPanel(), !isPreparingCreation else { return }
+        isPreparingCreation = true
+        pendingCreationCount += 1
+        defer { isPreparingCreation = false; pendingCreationCount -= 1 }
+        do {
+            let content = try ClipboardTextReader.capture(from: pasteboard)
+            var destination = directory
+            if destination == nil {
+                let picker = NSOpenPanel()
+                picker.canChooseFiles = false
+                picker.canChooseDirectories = true
+                picker.allowsMultipleSelection = false
+                picker.canCreateDirectories = true
+                picker.title = text(.saveLocation)
+                picker.prompt = text(.newFileFromClipboard)
+                picker.directoryURL = preferences.monitoredFolderURLs.first
+                NSApp.activate(ignoringOtherApps: true)
+                guard picker.runModal() == .OK, let selected = picker.url else { return }
+                try FolderAccess.remember(selected, in: &preferences)
+                save()
+                folderAccess.restore(preferences)
+                destination = selected
+            }
+            guard let destination, !CustomFileSavePanelController.shared.focusExistingPanel() else { return }
+            CustomFileSavePanelController.shared.present(in: destination, preferences: preferences,
+                initialText: content, documentTemplates: documentTemplates)
+        } catch {
+            let key: FileMintTextKey
+            switch error {
+            case ClipboardTextError.tooLarge: key = .clipboardTextTooLarge
+            case ClipboardTextError.unsupported: key = .clipboardTextUnsupported
+            default: key = .noClipboardText
+            }
+            let alert = NSAlert()
+            alert.messageText = text(.newFileFromClipboard)
+            alert.informativeText = text(key)
+            NSApp.activate(ignoringOtherApps: true)
+            alert.runModal()
+        }
+    }
 
     func pasteImageFile() {
-        guard !preparingClipboardImage, !CustomFileSavePanelController.shared.focusExistingPanel() else { return }
+        guard !isPreparingCreation, !CustomFileSavePanelController.shared.focusExistingPanel() else { return }
         let directory = preferences.monitoredFolderURLs.first ?? FileManager.default.homeDirectoryForCurrentUser
         Task { await presentClipboardImage(in: directory) }
     }
 
     func presentClipboardImage(in directory: URL, pasteboard: NSPasteboard = .general) async {
-        guard !preparingClipboardImage, !CustomFileSavePanelController.shared.focusExistingPanel() else { return }
-        preparingClipboardImage = true
+        guard !isPreparingCreation, !CustomFileSavePanelController.shared.focusExistingPanel() else { return }
+        isPreparingCreation = true
         pendingCreationCount += 1
-        defer { preparingClipboardImage = false; pendingCreationCount -= 1 }
+        defer { isPreparingCreation = false; pendingCreationCount -= 1 }
         do {
             guard let items = pasteboard.pasteboardItems, items.count == 1,
                   !items[0].types.contains(.fileURL),
@@ -441,8 +490,12 @@ final class PreferencesModel: ObservableObject {
                     try QuickCreationTicketStore().consume(url, preferences: snapshot)
                 }.value
                 guard let ticket else { return }
-                if ticket.clipboardImage == true { await presentClipboardImage(in: ticket.directory) }
-                else { await quickCreate(ticket) }
+                switch ticket.resolvedIntent {
+                case .clipboardImage: await presentClipboardImage(in: ticket.directory)
+                case .clipboardText: presentClipboardText(in: ticket.directory)
+                case .template: await quickCreate(ticket)
+                case nil: break
+                }
             } catch { lastError = error.localizedDescription }
         }
     }

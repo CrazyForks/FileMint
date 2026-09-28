@@ -58,6 +58,9 @@ Part of the [FileMint SPEC](../SPEC.md). This file owns the behavior below; othe
   adding an app enables its entry; its independent placement defaults to submenu.
   Saved list order controls each Finder menu level. See [Open with App](open-with.md)
   for validation and opening behavior.
+- A supported terminal's directory opening mode is saved with its existing App
+  entry. Older entries preserve Follow App behavior; adding a recognized terminal
+  defaults to New Tab. Other apps have no terminal mode control.
 - New File's Finder menu location persists independently of template order and
   defaults to submenu when older or malformed settings are loaded. See
   [creation](creation.md) for its menu behavior.

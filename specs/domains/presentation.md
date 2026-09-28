@@ -44,7 +44,10 @@ Part of the [FileMint SPEC](../SPEC.md). This file owns the behavior below; othe
   owns extension status, folder scope/access and optional Full Disk Access guidance.
   About retains its credits and update actions. New File remains reachable from
   every page. Settings navigation itself never writes preferences or creates files.
-- Use a 900 × 650 initial content size and an 840 × 600 minimum, with scrolling
+- Use a 1040 × 720 initial content size and a 960 × 680 minimum where the display
+  permits. Clamp to the screen's visible content area on small displays and keep
+  the page scrollable without clipped controls. The creation panel size stays compact.
+  With scrolling
   for long content. Sidebar labels, focus/selection and controls remain readable
   in English/Chinese and system light/dark appearances. Native keyboard and
   accessibility labels must remain available; icons supplement text, not replace it.
@@ -87,8 +90,10 @@ Part of the [FileMint SPEC](../SPEC.md). This file owns the behavior below; othe
 - Optional modules show enabled, applicable entries at their configured main-menu
   or submenu level; empty submenu roots are hidden. Chinese copy uses 拷贝 for Copy; the file-tools root is 文件（夹）工具.
 - Open with App uses the same grouped rows and trailing menu-position controls,
-  with real application icons, a visible drag handle, keyboard reorder buttons
-  and a nearby Add App action. Its empty state is
+  with real application icons, a visible drag handle, accessible reorder actions
+  and a nearby Add App action. Recognized terminal rows show a directory opening
+  dropdown beside the menu-position dropdown; other apps keep a compact row. Actions for moving,
+  repairing and removing an entry remain keyboard accessible. Its empty state is
   functional and concise; the entry and Finder group use `square.stack.3d.up` and child
   entries use the selected app's native icon.
 - Favorite Locations uses a searchable virtualized list, compact rows with native

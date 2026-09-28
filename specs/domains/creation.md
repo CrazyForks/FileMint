@@ -67,6 +67,13 @@ Part of the [FileMint SPEC](../SPEC.md). This file owns the behavior below; othe
   write in progress cannot be interrupted just because no update is installing.
 - Drafts are not stored. Cancelling never creates a file or changes the destination.
 
+## Clipboard text draft
+
+- New File from Clipboard is an explicit Finder New File action and a main-app/menu-bar action. Finder sends only the captured destination in a private, single-use, expiring ticket; the main app reads one clipboard item only when handling the action. Menu construction never reads clipboard data.
+- Accept nonempty plain text up to 8 MiB as UTF-8, including whitespace-only text and a plain-text representation of rich text. Reject file references, multiple items, image-only content and oversized text. Never interpret URLs or template tokens in the captured text.
+- Prefill the single creation panel as an edited `txt` draft. Format and filename remain editable; switching text formats preserves the exact content. Only Create writes; Cancel or canceled folder selection writes nothing. An existing draft is focused unchanged without reading the clipboard.
+- The main-app entry captures text before its directory picker; Finder uses its menu-captured destination. Preparation and an open draft block updater relaunch. Permission errors retain the draft and use the existing exact-directory authorization flow.
+
 ## Clipboard image creation
 
 - Paste Image as File is an explicit New File menu action in Finder and the app.

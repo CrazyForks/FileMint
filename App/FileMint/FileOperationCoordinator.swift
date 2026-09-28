@@ -100,7 +100,7 @@ final class FileOperationCoordinator: NSObject, NSSharingServiceDelegate {
                         case .airDrop: operationTitle = .airDrop
                         case .desktopAlias: operationTitle = .sendAliasToDesktop
                         case .resource: operationTitle = .resourceTools
-                        case .openWith: operationTitle = .openWithApps
+                        case .openWith, .openDirectory: operationTitle = .openWithApps
                         case .favoriteAdd, .favoriteLocate, .favoriteSearch: operationTitle = .favoriteLocations
                         }
                         try await handle(request)
@@ -160,6 +160,31 @@ final class FileOperationCoordinator: NSObject, NSSharingServiceDelegate {
                 throw OpenWithError.missingSelection
             }
             try await OpenWithApplicationAccess.open(selection, with: applicationURL)
+
+        case .openDirectory(let reference, let directory, let mode):
+            let target = OpenWithTarget.directory(directory)
+            guard let application = OpenWithPolicy.application(for: reference, target: target,
+                preferences: currentPreferences), application.terminalOpenMode == mode else {
+                throw OpenWithError.changedConfiguration
+            }
+            let applicationURL = try OpenWithApplicationAccess.resolve(application)
+            if applicationURL.startAccessingSecurityScopedResource() { access.append(applicationURL) }
+            try OpenWithApplicationAccess.validate(application, at: applicationURL)
+            var bookmarks: [String: Data] = [:]
+            guard try authorize(directory, bookmarks: &bookmarks, readOnly: true) else { return }
+            let values = try? directory.resourceValues(forKeys: [.isDirectoryKey, .isPackageKey, .isSymbolicLinkKey, .isAliasFileKey])
+            guard values?.isDirectory == true, values?.isPackage != true,
+                  values?.isSymbolicLink != true, values?.isAliasFile != true else {
+                throw OpenWithError.missingDirectory
+            }
+            guard FolderScope.containsResolvedDirectory(directory, in: currentPreferences.monitoredFolderURLs),
+                  let current = OpenWithPolicy.application(for: reference, target: target,
+                    preferences: currentPreferences), current.terminalOpenMode == mode else {
+                throw OpenWithError.changedConfiguration
+            }
+            try OpenWithApplicationAccess.validate(application, at: applicationURL)
+            try await TerminalDirectoryLauncher.open(directory, with: application,
+                applicationURL: applicationURL, mode: mode)
 
         case .resource(let tool, let selection):
             guard ResourceToolsPolicy.availableTools(selection: selection, isItemMenu: true,

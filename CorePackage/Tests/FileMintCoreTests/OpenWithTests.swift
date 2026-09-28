@@ -193,4 +193,63 @@ struct OpenWithTests {
             #expect(FileMintStrings.text(key, language: .english) != FileMintStrings.text(key, language: .chinese))
         }
     }
+
+    @Test("folder background shares the configured app list and terminal mode survives updates")
+    func directoryAndModes() throws {
+        let terminal = OpenWithApplication(name: "Terminal", bundleIdentifier: "com.apple.Terminal",
+            url: URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"), bookmark: Data([1]))
+        #expect(terminal.terminalOpenMode == .newTab)
+        #expect(TerminalAdapter(bundleIdentifier: "com.googlecode.iterm2") == .iterm2)
+        #expect(TerminalAdapter(bundleIdentifier: "com.mitchellh.ghostty") == .ghostty)
+        #expect(TerminalAdapter(bundleIdentifier: "dev.warp.Warp-Stable") == .warp)
+        #expect(TerminalAdapter(bundleIdentifier: "example.terminal") == nil)
+
+        var settings = OpenWithPreferences()
+        settings.add(terminal)
+        settings.applications[0].terminalOpenMode = .newWindow
+        var refreshed = terminal
+        refreshed.bookmark = Data([9])
+        settings.add(refreshed)
+        #expect(settings.applications[0].terminalOpenMode == .newWindow)
+        let restored = try JSONDecoder().decode(OpenWithPreferences.self, from: JSONEncoder().encode(settings))
+        #expect(restored == settings)
+
+        var legacy = try JSONSerialization.jsonObject(with: JSONEncoder().encode(terminal)) as! [String: Any]
+        legacy.removeValue(forKey: "terminalOpenMode")
+        let old = try JSONDecoder().decode(OpenWithApplication.self,
+            from: JSONSerialization.data(withJSONObject: legacy))
+        #expect(old.terminalOpenMode == .applicationDefault)
+
+        let preferences = preferences([terminal])
+        #expect(OpenWithPolicy.availableApplications(target: .directory(root), preferences: preferences) == [terminal])
+        #expect(OpenWithPolicy.availableApplications(target: .directory(URL(fileURLWithPath: "/Users/example/Outside")),
+            preferences: preferences).isEmpty)
+        #expect(OpenWithTargetPolicy.target(directory: root, selection: [], isContainer: true,
+            selectedIsOrdinaryDirectory: false) == .directory(root))
+        let folder = root.appendingPathComponent("Folder", isDirectory: true)
+        #expect(OpenWithTargetPolicy.target(directory: folder, selection: [folder], isContainer: false,
+            selectedIsOrdinaryDirectory: true) == .directory(folder))
+        #expect(OpenWithTargetPolicy.target(directory: root, selection: [folder], isContainer: false,
+            selectedIsOrdinaryDirectory: false) == .selection([folder]))
+        #expect(OpenWithTargetPolicy.target(directory: root, selection: [], isContainer: false,
+            selectedIsOrdinaryDirectory: false) == nil)
+        #expect(terminal.menuTitle(target: .directory(root), language: .english).contains("New Tab"))
+        #expect(terminal.menuTitle(target: .selection([folder]), language: .english) ==
+            terminal.menuTitle(language: .english))
+    }
+
+    @Test("directory ticket keeps target and requested mode, expires and cannot replay")
+    func directoryTransport() throws {
+        let storage = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: storage) }
+        let store = FileOperationTicketStore(directory: storage)
+        let request = FileOperationRequest.openDirectory(application: app().reference,
+            directory: root.appendingPathComponent("空格 # % ?", isDirectory: true), mode: .newWindow)
+        let now = Date()
+        let url = try store.enqueue(request, now: now)
+        #expect(try store.consume(url, now: now) == request)
+        #expect(try store.consume(url, now: now) == nil)
+        let expired = try store.enqueue(request, now: now)
+        #expect(try store.consume(expired, now: now.addingTimeInterval(61)) == nil)
+    }
 }

@@ -219,16 +219,30 @@ This fixture does not prove that Finder has loaded the new extension.
   last entry and verify the empty state. Removal must not uninstall the application.
 - Drag apps up and down, then check their order in each Finder menu level and after
   relaunch. Re-add a reordered app and verify it keeps its saved position. Check
-  the keyboard reorder buttons too. While dragging, the blue insertion line must
+  the keyboard reorder commands in each row's More menu too. While dragging, the blue insertion line must
   indicate the exact final boundary; release and check the row settles smoothly.
   Cancel a drag and ensure no guide remains. Repeat with Reduce Motion.
-- Check Chinese/English, light/dark and 840×600, including keyboard controls,
+- Check Chinese/English, light/dark and 960×680, plus smaller-display clamping, including keyboard controls,
   long app names, unavailable apps and scrolling with a long list. Add again after
   moving an app to repair its saved location/access.
 - In installed Finder, select a file, folder and mixed batch in scope. Each entry
   appears once at its configured level, using the app's native icon. The group uses
   the shared stack symbol and disappears when all entries are main-level or absent.
-  Background/toolbar/sidebar and partly out-of-scope selections have no app entries.
+  A background container in scope also offers the same configured apps, once each,
+  with the captured folder as target. Toolbar/sidebar and partly out-of-scope
+  selections have no app entries.
+- Add Terminal, iTerm2, Ghostty and Warp one at a time where installed. The
+  directory mode appears beside placement as a dropdown only for a recognized
+  terminal. New entries default to New Tab, older saved entries retain Follow App.
+  Verify New Tab and New Window in an empty and a running terminal with one/multiple
+  windows; inspect the actual cwd and tab/window count. Missing service, app move,
+  duplicate registration, disabled service and special-character paths must give
+  a clear result without switching modes or touching the general clipboard.
+- With one ordinary selected folder, the directory mode applies to that folder.
+  With files, packages, links or a mixed selection, existing item opening remains
+  in force. Reopen the Finder menu after changing terminal mode; an older captured
+  item must not silently adopt the new mode. Check the optional menu preview and
+  keyboard access to both dropdowns and More actions.
 - Open using a configured app; observe the complete batch and settings-window
   isolation. Open an older menu after changing selection/configuration: never open
   the new selection or a removed/replaced app. Include Unicode and literal symbols.
@@ -252,7 +266,7 @@ This fixture does not prove that Finder has loaded the new extension.
 - Background and file context menus within monitored folders show New File under
   its own submenu by default; its root entry has the FileMint logo and action rows
   are text-only. Switch its location to the main menu and verify New File…,
-  Paste Image as File and each enabled type appear directly, once and in template
+  New File from Clipboard, Paste Image as File and each enabled type appear directly, once and in template
   order; switch back and relaunch to check persistence. Other apps may contribute
   similarly named menus.
 - Verify each quick action creates on disk, then verify automatic name increments.
@@ -263,6 +277,10 @@ This fixture does not prove that Finder has loaded the new extension.
 - Move to another Finder folder after opening a menu: its action must keep its
   captured destination, not pick up the later selection.
 - New File… opens the same main-app panel; repeated requests focus the same draft.
+- New File from Clipboard reads only after the explicit click and prefills that
+  panel. Verify literal multiline/Unicode/whitespace/template tokens, format
+  switching, cancellation, clipboard changes after capture, oversized text,
+  copied files/images and repeated clicks while a draft or picker is open.
 - No Finder callback invokes main-actor UI directly on the XPC callback queue.
 - Quick routes require a matching single-use, unexpired local ticket. The app
   validates enabled templates and monitored paths before creating anything.
