@@ -3,26 +3,46 @@ import FileMintCore
 
 @MainActor
 final class FavoriteLocationsModel: ObservableObject {
-    static let shared = FavoriteLocationsModel()
+    private static var sharedInstance: FavoriteLocationsModel?
+    static var shared: FavoriteLocationsModel {
+        if let sharedInstance { return sharedInstance }
+        let instance = FavoriteLocationsModel()
+        sharedInstance = instance
+        return instance
+    }
+    static var sharedIsBusy: Bool { sharedInstance?.isBusy ?? false }
     @Published private(set) var catalog = FavoriteLocationsCatalog()
     @Published private(set) var recoveryRequired = false
     @Published private(set) var unavailableIDs: Set<UUID> = []
     @Published private(set) var isChecking = false
+    @Published private(set) var isLoading = true
+    @Published private(set) var pendingOperations = 0
+    var isBusy: Bool { isLoading || pendingOperations > 0 }
     @Published private(set) var backupURL: URL?
     @Published var message: String?
-    private let store: FavoriteLocationsStore
+    private let repository: FavoriteLocationsRepository
+    private var revision: UInt64 = 0
+    private var hasSnapshot = false
+    private var loading: Task<Void, Never>?
 
     init(store: FavoriteLocationsStore = FavoriteLocationsStore()) {
-        self.store = store
-        do { catalog = try store.load() }
-        catch { recoveryRequired = true }
+        repository = FavoriteLocationsRepository(store: store)
+        loading = Task {
+            defer { isLoading = false }
+            do { apply(try await repository.snapshot()) }
+            catch { recoveryRequired = true }
+        }
     }
 
-    func backupAndReset(language: AppLanguage) {
+    func waitUntilLoaded() async { await loading?.value }
+
+    func backupAndReset(language: AppLanguage) async {
         guard recoveryRequired else { return }
+        pendingOperations += 1
+        defer { pendingOperations -= 1 }
         do {
-            let backup = try store.backupDamagedAndReset()
-            catalog = FavoriteLocationsCatalog()
+            let (backup, snapshot) = try await repository.backupAndReset()
+            apply(snapshot)
             unavailableIDs = []
             recoveryRequired = false
             backupURL = backup
@@ -34,36 +54,54 @@ final class FavoriteLocationsModel: ObservableObject {
 
     var quickItems: [FavoriteLocation] { catalog.quickItems() }
 
-    private func save(_ changed: FavoriteLocationsCatalog) throws {
+    private func apply(_ snapshot: FavoriteLocationsSnapshot) {
+        guard !hasSnapshot || snapshot.revision > revision else { return }
+        hasSnapshot = true
+        revision = snapshot.revision
+        catalog = snapshot.catalog
+    }
+
+    private func edit<Result: Sendable>(
+        _ change: @Sendable (inout FavoriteLocationsCatalog) throws -> Result
+    ) async throws -> Result {
+        pendingOperations += 1
+        defer { pendingOperations -= 1 }
+        await waitUntilLoaded()
         guard !recoveryRequired else { throw FavoriteLocationError.damagedCatalog }
-        guard let disk = try? store.load(), disk == catalog else {
-            recoveryRequired = true
-            throw FavoriteLocationError.damagedCatalog
+        do {
+            let (result, snapshot) = try await repository.update(change)
+            apply(snapshot)
+            message = nil
+            DistributedNotificationCenter.default().post(
+                name: Notification.Name(FileMintAppGroup.preferencesDidChangeNotification), object: nil)
+            return result
+        } catch {
+            if error as? FavoriteLocationError == .damagedCatalog { recoveryRequired = true }
+            throw error
         }
-        do { try store.save(changed) }
-        catch { throw FavoriteLocationError.saveFailed }
-        catalog = changed
-        message = nil
-        DistributedNotificationCenter.default().post(
-            name: Notification.Name(FileMintAppGroup.preferencesDidChangeNotification), object: nil)
     }
 
     @discardableResult
-    func add(_ urls: [URL]) throws -> FavoriteAddResult {
+    func add(_ urls: [URL], isAllowed: @escaping @Sendable () -> Bool = { true }) async throws -> FavoriteAddResult {
+        pendingOperations += 1
+        defer { pendingOperations -= 1 }
+        await waitUntilLoaded()
         guard !recoveryRequired, (1...100).contains(urls.count) else { throw FavoriteLocationError.invalidSelection }
-        var captured: [FavoriteLocation] = []
-        for url in urls {
-            let grant = url.startAccessingSecurityScopedResource()
-            defer { if grant { url.stopAccessingSecurityScopedResource() } }
-            captured.append(try Self.capture(url))
+        let captured = try await Task.detached(priority: .userInitiated) {
+            try urls.map { url in
+                let grant = url.startAccessingSecurityScopedResource()
+                defer { if grant { url.stopAccessingSecurityScopedResource() } }
+                return try Self.capture(url)
+            }
+        }.value
+        return try await edit {
+            guard isAllowed() else { throw FavoriteLocationError.invalidSelection }
+            return try $0.add(captured)
         }
-        var changed = catalog
-        let result = try changed.add(captured)
-        if result.added > 0 { try save(changed) }
-        return result
     }
 
     func chooseItems(language: AppLanguage) {
+        guard !isBusy else { return }
         let panel = NSOpenPanel()
         panel.canChooseFiles = true
         panel.canChooseDirectories = true
@@ -72,70 +110,69 @@ final class FavoriteLocationsModel: ObservableObject {
         panel.title = FavoriteText.choose.text(language)
         NSApp.activate(ignoringOtherApps: true)
         guard panel.runModal() == .OK else { return }
-        do {
-            let result = try add(panel.urls)
-            message = String(format: FavoriteText.added.text(language), result.added, result.duplicates)
-        } catch { message = FavoriteText.addFailed.text(language) }
+        let urls = panel.urls
+        Task {
+            do {
+                let result = try await add(urls)
+                message = String(format: FavoriteText.added.text(language), result.added, result.duplicates)
+            } catch { message = FavoriteText.addFailed.text(language) }
+        }
     }
 
-    func remove(_ ids: Set<UUID>) throws {
-        var changed = catalog
-        changed.items.removeAll { ids.contains($0.id) }
-        try save(changed)
+    func remove(_ ids: Set<UUID>) async throws {
+        try await edit { $0.items.removeAll { ids.contains($0.id) } }
         unavailableIDs.subtract(ids)
     }
 
-    func setPinned(_ ids: Set<UUID>, to value: Bool) throws {
-        var changed = catalog
-        for index in changed.items.indices where ids.contains(changed.items[index].id) {
-            changed.items[index].isPinned = value
+    func setPinned(_ ids: Set<UUID>, to value: Bool) async throws {
+        try await edit { changed in
+            for index in changed.items.indices where ids.contains(changed.items[index].id) {
+                changed.items[index].isPinned = value
+            }
         }
-        try save(changed)
     }
 
-    func movePinned(_ id: UUID, by offset: Int) throws {
-        var changed = catalog
-        changed.movePinned(id, by: offset)
-        if changed != catalog { try save(changed) }
+    func movePinned(_ id: UUID, by offset: Int) async throws {
+        try await edit { $0.movePinned(id, by: offset) }
     }
 
-    func movePinned(_ id: UUID, to targetID: UUID) throws {
-        var changed = catalog
-        changed.movePinned(id, to: targetID)
-        if changed != catalog { try save(changed) }
+    func movePinned(_ id: UUID, to targetID: UUID) async throws {
+        try await edit { $0.movePinned(id, to: targetID) }
     }
 
-    func setGroup(_ ids: Set<UUID>, to group: String) throws {
+    func setGroup(_ ids: Set<UUID>, to group: String) async throws {
         let group = String(group.trimmingCharacters(in: .whitespacesAndNewlines).prefix(60))
-        var changed = catalog
-        for index in changed.items.indices where ids.contains(changed.items[index].id) {
+        try await edit { changed in
+            for index in changed.items.indices where ids.contains(changed.items[index].id) {
+                changed.items[index].group = group
+            }
+        }
+    }
+
+    func updateDetails(_ id: UUID, name: String, group: String) async throws {
+        let name = String(name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120))
+        let group = String(group.trimmingCharacters(in: .whitespacesAndNewlines).prefix(60))
+        guard !name.isEmpty else { throw FavoriteLocationError.invalidSelection }
+        try await edit { changed in
+            guard let index = changed.items.firstIndex(where: { $0.id == id }) else { throw FavoriteLocationError.unavailable }
+            changed.items[index].name = name
             changed.items[index].group = group
         }
-        try save(changed)
     }
 
-    func rename(_ id: UUID, to name: String) throws {
-        let name = String(name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120))
-        guard !name.isEmpty else { throw FavoriteLocationError.invalidSelection }
-        var changed = catalog
-        guard let index = changed.items.firstIndex(where: { $0.id == id }) else { throw FavoriteLocationError.unavailable }
-        changed.items[index].name = name
-        try save(changed)
-    }
-
-    func clearRecent() throws {
-        var changed = catalog
-        for index in changed.items.indices {
-            changed.items[index].addedAt = nil
-            changed.items[index].lastLocatedAt = nil
+    func clearRecent() async throws {
+        try await edit { changed in
+            for index in changed.items.indices {
+                changed.items[index].addedAt = nil
+                changed.items[index].lastLocatedAt = nil
+            }
         }
-        try save(changed)
     }
 
     func checkAvailability(_ id: UUID) async {
         guard let item = catalog.items.first(where: { $0.id == id }) else { return }
         let available = await Task.detached(priority: .utility) { Self.isAvailable(item) }.value
-        guard catalog.items.contains(where: { $0.id == id }) else { return }
+        guard catalog.items.first(where: { $0.id == id }) == item else { return }
         if available { unavailableIDs.remove(id) }
         else { unavailableIDs.insert(id) }
     }
@@ -148,7 +185,13 @@ final class FavoriteLocationsModel: ObservableObject {
             let unavailable = await Task.detached(priority: .utility) {
                 Set(items.filter { !Self.isAvailable($0) }.map(\.id))
             }.value
-            unavailableIDs = unavailable
+            // A relink or removal while the check is running must not restore
+            // an obsolete warning from the previous bookmark.
+            let current = Dictionary(uniqueKeysWithValues: catalog.items.map { ($0.id, $0) })
+            for item in items where current[item.id] == item {
+                if unavailable.contains(item.id) { unavailableIDs.insert(item.id) }
+                else { unavailableIDs.remove(item.id) }
+            }
             isChecking = false
         }
     }
@@ -159,35 +202,31 @@ final class FavoriteLocationsModel: ObservableObject {
             options: [.withSecurityScope, .withoutUI], relativeTo: nil, bookmarkDataIsStale: &stale) else { return false }
         let grant = url.startAccessingSecurityScopedResource()
         defer { if grant { url.stopAccessingSecurityScopedResource() } }
-        guard let captured = try? FileMoveItem.capture(url) else { return false }
-        return captured.device == item.device && captured.inode == item.inode &&
-            (item.createdAt == nil || captured.createdAt == item.createdAt)
+        return (try? validate(url, for: item)) != nil
     }
 
-    func locate(_ id: UUID) throws { try activate(id, openFile: false) }
+    func locate(_ id: UUID) async throws { try await activate(id, openFile: false) }
 
-    func openFile(_ id: UUID) throws { try activate(id, openFile: true) }
+    func openFile(_ id: UUID) async throws { try await activate(id, openFile: true) }
 
-    private func activate(_ id: UUID, openFile: Bool) throws {
+    private func activate(_ id: UUID, openFile: Bool) async throws {
+        pendingOperations += 1
+        defer { pendingOperations -= 1 }
+        await waitUntilLoaded()
         guard let item = catalog.items.first(where: { $0.id == id }) else { throw FavoriteLocationError.unavailable }
         guard !openFile || item.kind == .file else { throw FavoriteLocationError.invalidSelection }
-        var stale = false
-        guard let resolved = try? URL(resolvingBookmarkData: item.bookmark,
-            options: [.withSecurityScope, .withoutUI], relativeTo: nil, bookmarkDataIsStale: &stale) else {
-            unavailableIDs.insert(id)
-            throw FavoriteLocationError.unavailable
+        let access: ResolvedFavorite
+        do {
+            access = try await Task.detached(priority: .userInitiated) { try Self.resolve(item) }.value
         }
-        let grant = resolved.startAccessingSecurityScopedResource()
-        defer { if grant { resolved.stopAccessingSecurityScopedResource() } }
-        let captured: FavoriteLocation
-        do { captured = try Self.capture(resolved, id: id, name: item.name, group: item.group,
-            isPinned: item.isPinned, addedAt: item.addedAt, lastLocatedAt: item.lastLocatedAt) }
-        catch { unavailableIDs.insert(id); throw FavoriteLocationError.unavailable }
-        guard captured.device == item.device, captured.inode == item.inode,
-              (item.createdAt == nil || captured.createdAt == item.createdAt),
-              captured.kind == item.kind else {
-            unavailableIDs.insert(id)
-            throw FavoriteLocationError.replaced
+        catch {
+            if catalog.items.first(where: { $0.id == id })?.bookmark == item.bookmark { unavailableIDs.insert(id) }
+            throw error
+        }
+        let resolved = access.url
+        defer { if access.granted { resolved.stopAccessingSecurityScopedResource() } }
+        guard catalog.items.first(where: { $0.id == id })?.bookmark == item.bookmark else {
+            throw FavoriteLocationError.unavailable
         }
         if openFile || item.kind == .folder {
             guard NSWorkspace.shared.open(resolved) else { throw FavoriteLocationError.unavailable }
@@ -195,15 +234,39 @@ final class FavoriteLocationsModel: ObservableObject {
             NSWorkspace.shared.activateFileViewerSelecting([resolved])
         }
         unavailableIDs.remove(id)
-        var changed = catalog
-        guard let index = changed.items.firstIndex(where: { $0.id == id }) else { return }
-        changed.items[index].url = resolved.standardizedFileURL
-        if stale { changed.items[index].bookmark = captured.bookmark }
-        changed.items[index].lastLocatedAt = Date()
-        try save(changed)
+        try await edit { changed in
+            guard let index = changed.items.firstIndex(where: { $0.id == id }),
+                  changed.items[index].bookmark == item.bookmark else { return }
+            changed.items[index].url = resolved.standardizedFileURL
+            if let refreshed = access.bookmark { changed.items[index].bookmark = refreshed }
+            changed.items[index].lastLocatedAt = Date()
+        }
     }
 
-    func relink(_ id: UUID, language: AppLanguage) {
+    private struct ResolvedFavorite: Sendable {
+        let url: URL
+        let granted: Bool
+        let bookmark: Data?
+    }
+
+    nonisolated private static func resolve(_ item: FavoriteLocation) throws -> ResolvedFavorite {
+        var stale = false
+        guard let url = try? URL(resolvingBookmarkData: item.bookmark,
+            options: [.withSecurityScope, .withoutUI, .withoutMounting], relativeTo: nil,
+            bookmarkDataIsStale: &stale) else { throw FavoriteLocationError.unavailable }
+        let granted = url.startAccessingSecurityScopedResource()
+        do {
+            try validate(url, for: item)
+            // Renewal failure must not prevent opening an otherwise valid item.
+            return ResolvedFavorite(url: url, granted: granted, bookmark: stale ? try? bookmark(for: url) : nil)
+        } catch {
+            if granted { url.stopAccessingSecurityScopedResource() }
+            throw error
+        }
+    }
+
+    func relink(_ id: UUID, language: AppLanguage) async {
+        await waitUntilLoaded()
         guard let item = catalog.items.first(where: { $0.id == id }) else { return }
         let panel = NSOpenPanel()
         panel.canChooseFiles = item.kind == .file
@@ -214,32 +277,42 @@ final class FavoriteLocationsModel: ObservableObject {
         panel.directoryURL = item.url.deletingLastPathComponent()
         NSApp.activate(ignoringOtherApps: true)
         guard panel.runModal() == .OK, let url = panel.url else { return }
+        pendingOperations += 1
+        defer { pendingOperations -= 1 }
         do {
-            let grant = url.startAccessingSecurityScopedResource()
-            defer { if grant { url.stopAccessingSecurityScopedResource() } }
-            let replacement = try Self.capture(url, id: id, name: item.name, group: item.group,
-                isPinned: item.isPinned, addedAt: item.addedAt, lastLocatedAt: item.lastLocatedAt)
+            let replacement = try await Task.detached(priority: .userInitiated) {
+                let grant = url.startAccessingSecurityScopedResource()
+                defer { if grant { url.stopAccessingSecurityScopedResource() } }
+                return try Self.capture(url, id: id)
+            }.value
             guard replacement.kind == item.kind else { throw FavoriteLocationError.invalidSelection }
-            guard !catalog.items.contains(where: { $0.id != id &&
-                ($0.url.standardizedFileURL == replacement.url.standardizedFileURL ||
-                 ($0.device == replacement.device && $0.inode == replacement.inode)) }) else {
-                throw FavoriteLocationError.invalidSelection
+            try await edit { changed in
+                guard let index = changed.items.firstIndex(where: { $0.id == id }),
+                      changed.items[index].bookmark == item.bookmark else { throw FavoriteLocationError.unavailable }
+                guard !changed.items.contains(where: { $0.id != id &&
+                    ($0.url.standardizedFileURL == replacement.url.standardizedFileURL ||
+                     ($0.device == replacement.device && $0.inode == replacement.inode)) }) else {
+                    throw FavoriteLocationError.invalidSelection
+                }
+                var refreshed = replacement
+                let current = changed.items[index]
+                refreshed.name = current.name
+                refreshed.group = current.group
+                refreshed.isPinned = current.isPinned
+                refreshed.addedAt = current.addedAt
+                refreshed.lastLocatedAt = current.lastLocatedAt
+                changed.items[index] = refreshed
             }
-            var changed = catalog
-            guard let index = changed.items.firstIndex(where: { $0.id == id }) else { return }
-            changed.items[index] = replacement
-            try save(changed)
             unavailableIDs.remove(id)
         } catch { message = FavoriteText.addFailed.text(language) }
     }
 
-    private static func capture(_ url: URL, id: UUID = UUID(), name: String? = nil,
-                                group: String = "", isPinned: Bool = false,
-                                addedAt: Date? = Date(),
-                                lastLocatedAt: Date? = nil) throws -> FavoriteLocation {
+    nonisolated private static func metadata(_ url: URL) throws ->
+        (identity: FileMoveItem, kind: FavoriteLocationKind, volumeUUID: String?) {
         guard OpenWithPolicy.isLocalFileURL(url), url.path != "/" else { throw FavoriteLocationError.invalidSelection }
         let values = try url.resourceValues(forKeys: [.isSymbolicLinkKey, .isDirectoryKey,
-            .isPackageKey, .isRegularFileKey, .isUbiquitousItemKey, .ubiquitousItemDownloadingStatusKey])
+            .isPackageKey, .isRegularFileKey, .isUbiquitousItemKey, .ubiquitousItemDownloadingStatusKey,
+            .volumeUUIDStringKey])
         guard values.isSymbolicLink != true,
               values.isDirectory == true || values.isRegularFile == true,
               values.isUbiquitousItem != true || values.ubiquitousItemDownloadingStatus == .current ||
@@ -247,12 +320,36 @@ final class FavoriteLocationsModel: ObservableObject {
             throw FavoriteLocationError.invalidSelection
         }
         let identity = try FileMoveItem.capture(url)
+        return (identity, values.isDirectory == true && values.isPackage != true ? .folder : .file,
+                values.volumeUUIDString)
+    }
+
+    nonisolated private static func validate(_ url: URL, for item: FavoriteLocation) throws {
+        let captured: (identity: FileMoveItem, kind: FavoriteLocationKind, volumeUUID: String?)
+        do { captured = try metadata(url) }
+        catch { throw FavoriteLocationError.unavailable }
+        guard item.matchesIdentity(captured.identity, kind: captured.kind, volumeUUID: captured.volumeUUID) else {
+            throw FavoriteLocationError.replaced
+        }
+    }
+
+    nonisolated private static func bookmark(for url: URL) throws -> Data {
         let bookmark = try url.bookmarkData(options: .withSecurityScope,
-            includingResourceValuesForKeys: nil, relativeTo: nil)
+            includingResourceValuesForKeys: [.volumeUUIDStringKey], relativeTo: nil)
         guard bookmark.count <= 131_072 else { throw FavoriteLocationError.invalidSelection }
+        return bookmark
+    }
+
+    nonisolated private static func capture(_ url: URL, id: UUID = UUID(), name: String? = nil,
+                                group: String = "", isPinned: Bool = false,
+                                addedAt: Date? = Date(),
+                                lastLocatedAt: Date? = nil) throws -> FavoriteLocation {
+        let captured = try metadata(url)
+        let identity = captured.identity
+        let bookmark = try bookmark(for: url)
         return FavoriteLocation(id: id, url: url, bookmark: bookmark,
             device: identity.device, inode: identity.inode, createdAt: identity.createdAt,
-            kind: values.isDirectory == true && values.isPackage != true ? .folder : .file,
+            kind: captured.kind,
             name: name ?? url.lastPathComponent, group: group,
             isPinned: isPinned, addedAt: addedAt, lastLocatedAt: lastLocatedAt)
     }

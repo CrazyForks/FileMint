@@ -46,6 +46,20 @@ public struct FavoriteLocation: Codable, Equatable, Identifiable, Sendable {
         self.addedAt = addedAt
         self.lastLocatedAt = lastLocatedAt
     }
+
+    /// Device numbers describe a mount, not a persistent volume identity. Read
+    /// the original volume UUID from the bookmark so existing catalogs benefit
+    /// without trusting the current occupant of a saved path.
+    public func matchesIdentity(_ candidate: FileMoveItem, kind: FavoriteLocationKind,
+                                volumeUUID: String?) -> Bool {
+        guard candidate.inode == inode, kind == self.kind,
+              createdAt == nil || candidate.createdAt == createdAt else { return false }
+        let resources = NSURL.resourceValues(forKeys: [.volumeUUIDStringKey], fromBookmarkData: bookmark)
+        if let savedVolume = resources?[.volumeUUIDStringKey] as? String, !savedVolume.isEmpty {
+            return volumeUUID == savedVolume
+        }
+        return candidate.device == device
+    }
 }
 
 public struct FavoriteAddResult: Equatable, Sendable {
@@ -79,7 +93,7 @@ public struct FavoriteLocationsCatalog: Codable, Equatable, Sendable {
     public func quickItems(pinnedLimit: Int = 6, recentLimit: Int = 4) -> [FavoriteLocation] {
         let pinned = Array(items.filter(\.isPinned).prefix(max(0, pinnedLimit)))
         let pinnedIDs = Set(pinned.map(\.id))
-        let recent = items.filter { !pinnedIDs.contains($0.id) }
+        let recent = items.filter { !pinnedIDs.contains($0.id) && ($0.lastLocatedAt != nil || $0.addedAt != nil) }
             .sorted { max($0.lastLocatedAt ?? .distantPast, $0.addedAt ?? .distantPast) >
                 max($1.lastLocatedAt ?? .distantPast, $1.addedAt ?? .distantPast) }
         return pinned + Array(recent.prefix(max(0, recentLimit)))

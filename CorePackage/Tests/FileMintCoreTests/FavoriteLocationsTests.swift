@@ -114,4 +114,50 @@ struct FavoriteLocationsTests {
         let tag = registry.register([FileMenuAction(directory: root, favoriteAction: .locate(id))])[0]
         #expect(registry.takeAction(for: tag)?.favoriteAction == .locate(id))
     }
+
+    @Test("saved bookmarks survive device renumbering but reject a different volume or replacement")
+    func persistentIdentity() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("favorite-identity-\(UUID())")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let url = folder.appendingPathComponent("item.txt")
+        try Data("original".utf8).write(to: url)
+        let identity = try FileMoveItem.capture(url)
+        let volume = try #require(url.resourceValues(forKeys: [.volumeUUIDStringKey]).volumeUUIDString)
+        // Existing releases did not explicitly request the volume resource key.
+        let bookmark = try url.bookmarkData(options: .minimalBookmark,
+            includingResourceValuesForKeys: nil, relativeTo: nil)
+        let favorite = FavoriteLocation(url: url, bookmark: bookmark,
+            device: identity.device + 37, inode: identity.inode, createdAt: identity.createdAt,
+            kind: .file, name: "Saved file", group: "工作")
+        let store = FavoriteLocationsStore(file: folder.appendingPathComponent("favorites.json"))
+        try store.save(FavoriteLocationsCatalog(items: [favorite]))
+        let restored = try #require(store.load().items.first)
+        #expect(restored.matchesIdentity(identity, kind: .file, volumeUUID: volume))
+        #expect(!restored.matchesIdentity(identity, kind: .file, volumeUUID: "another-volume"))
+        #expect(!restored.matchesIdentity(identity, kind: .file, volumeUUID: nil))
+        #expect(!restored.matchesIdentity(identity, kind: .folder, volumeUUID: volume))
+        var reusedInode = restored
+        reusedInode.createdAt = identity.createdAt?.addingTimeInterval(-1)
+        #expect(!reusedInode.matchesIdentity(identity, kind: .file, volumeUUID: volume))
+
+        try FileManager.default.moveItem(at: url, to: folder.appendingPathComponent("original.txt"))
+        try Data("replacement".utf8).write(to: url)
+        let replacement = try FileMoveItem.capture(url)
+        #expect(!restored.matchesIdentity(replacement, kind: .file, volumeUUID: volume))
+    }
+
+    @Test("a legacy bookmark without a volume identifier retains strict device validation")
+    func legacyIdentity() throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("favorite-legacy-\(UUID())")
+        try Data().write(to: url)
+        defer { try? FileManager.default.removeItem(at: url) }
+        let identity = try FileMoveItem.capture(url)
+        var favorite = FavoriteLocation(url: url, bookmark: Data([1, 2, 3]),
+            device: identity.device, inode: identity.inode, createdAt: identity.createdAt,
+            kind: .file, name: "Legacy")
+        #expect(favorite.matchesIdentity(identity, kind: .file, volumeUUID: nil))
+        favorite.device += 1
+        #expect(!favorite.matchesIdentity(identity, kind: .file, volumeUUID: nil))
+    }
 }

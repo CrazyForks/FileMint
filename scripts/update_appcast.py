@@ -99,15 +99,15 @@ def main():
     args = parser.parse_args()
     validate_inputs(args.archive, args.version, args.build)
     key = public_key()
-    if args.mode == "generate":
-        if args.feed.exists():
-            raise ValueError("Refusing to replace an existing appcast")
+    if args.mode == "generate" and not args.feed.exists():
         tools = Path(subprocess.check_output(["bash", str(ROOT / "scripts/sparkle_tools.sh")], text=True).strip())
         stored_key = subprocess.check_output([str(tools / "generate_keys"), "--account", ACCOUNT, "-p"], text=True).strip()
         if stored_key != key:
             raise ValueError("Local update key does not match the app's public key")
         signature = subprocess.check_output([str(tools / "sign_update"), "--account", ACCOUNT, "-p", str(args.archive)], text=True).strip()
         make_feed(args.archive, args.version, args.build, signature).write(args.feed, encoding="utf-8", xml_declaration=True)
+    # A resumed local release may already have a signed feed. Reuse only the
+    # exact verified feed; never replace it or request the private key again.
     signature = validate_feed(args.feed, args.archive, args.version, args.build)
     subprocess.run(["swift", str(ROOT / "scripts/verify_update_signature.swift"), str(args.archive), key, signature], check=True)
     print(f"Verified appcast for FileMint {args.version} ({args.build})")

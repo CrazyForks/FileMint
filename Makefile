@@ -1,6 +1,6 @@
 -include .local/signing.mk
 
-.PHONY: verify verify-appcast verify-release-metadata verify-release-notarization verify-signing-entitlements verify-sparkle-driver verify-context verify-harness-cli verify-updates update-sandbox-harness test harness project build dmg package release-local publish-local doctor icon clean
+.PHONY: verify verify-favorite-model verify-appcast verify-release-metadata verify-release-notarization verify-signing-entitlements verify-sparkle-driver verify-context verify-harness-cli verify-updates update-sandbox-harness test harness project build dmg package release-local publish-local doctor icon clean
 
 DEVELOPER_DIR ?= /Applications/Xcode.app/Contents/Developer
 export DEVELOPER_DIR
@@ -10,6 +10,9 @@ verify: verify-context test harness verify-harness-cli verify-appcast verify-rel
 
 verify-context:
 	python3 scripts/verify_context.py
+
+verify-favorite-model:
+	bash scripts/verify_favorite_model.sh
 
 verify-harness-cli:
 	swift build --package-path CorePackage --product filemint-harness

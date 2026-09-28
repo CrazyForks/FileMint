@@ -2,6 +2,8 @@
 import base64
 import tempfile
 import unittest
+from unittest.mock import patch
+import subprocess
 import sys
 sys.dont_write_bytecode = True
 from pathlib import Path
@@ -30,6 +32,26 @@ class AppcastTests(unittest.TestCase):
         self.archive.write_bytes(b"changed archive")
         with self.assertRaises(ValueError):
             appcast.validate_feed(self.feed, self.archive, "0.6.0", "13")
+
+    def test_resumed_generation_reuses_only_verified_feed_without_private_key(self):
+        self.write()
+        original = self.feed.read_bytes()
+        args = ["update_appcast.py", "generate", str(self.archive), "0.6.0", "13", str(self.feed)]
+        with patch.object(sys, "argv", args), patch.object(appcast.subprocess, "check_output") as private_key, \
+                patch.object(appcast.subprocess, "run") as verify:
+            appcast.main()
+            private_key.assert_not_called()
+            verify.assert_called_once()
+            self.assertTrue(verify.call_args.kwargs["check"])
+            self.assertIn("verify_update_signature.swift", verify.call_args.args[0][1])
+        self.assertEqual(self.feed.read_bytes(), original)
+        # A signature failure cannot silently regenerate/replace the old feed.
+        with patch.object(sys, "argv", args), patch.object(appcast.subprocess, "check_output") as private_key, \
+                patch.object(appcast.subprocess, "run", side_effect=subprocess.CalledProcessError(1, "swift")):
+            with self.assertRaises(subprocess.CalledProcessError):
+                appcast.main()
+            private_key.assert_not_called()
+        self.assertEqual(self.feed.read_bytes(), original)
 
     def test_project_deployment_targets_must_match(self):
         project = Path(self.directory.name) / "project.yml"

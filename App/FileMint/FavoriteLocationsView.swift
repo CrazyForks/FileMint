@@ -9,7 +9,7 @@ struct FavoriteLocationsPane: View {
     @State private var query = ""
     @State private var filter: Filter = .all
     @State private var typeFilter: FavoriteLocationKind?
-    @State private var groupFilter = "*"
+    @State private var groupFilter: String?
     @State private var selected: Set<UUID> = []
     @State private var editing: FavoriteLocation?
     @State private var editingGroup = false
@@ -27,7 +27,7 @@ struct FavoriteLocationsPane: View {
     private var rows: [FavoriteLocation] {
         var rows = favorites.catalog.search(query).filter { item in
             (typeFilter == nil || item.kind == typeFilter) &&
-                (groupFilter == "*" || item.group == groupFilter) &&
+                (groupFilter == nil || item.group == groupFilter) &&
                 (filter != .pinned || item.isPinned) &&
                 (filter != .recent || item.lastLocatedAt != nil || item.addedAt != nil) &&
                 (filter != .unavailable || favorites.unavailableIDs.contains(item.id))
@@ -45,6 +45,8 @@ struct FavoriteLocationsPane: View {
     }
 
     var body: some View {
+        let visibleRows = rows
+        let lastRowID = visibleRows.last?.id
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 HStack {
@@ -67,7 +69,7 @@ struct FavoriteLocationsPane: View {
                             alert.addButton(withTitle: text(.cancel))
                             alert.addButton(withTitle: text(.recover))
                             guard alert.runModal() == .alertSecondButtonReturn else { return }
-                            favorites.backupAndReset(language: language)
+                            Task { await favorites.backupAndReset(language: language) }
                         }.buttonStyle(MintButtonStyle())
                     }.mintSurface()
                 } else {
@@ -76,9 +78,9 @@ struct FavoriteLocationsPane: View {
                             TextField(text(.searchPlaceholder), text: $query).textFieldStyle(.roundedBorder)
                                 .accessibilityIdentifier("favorites.search")
                             Picker(text(.group), selection: $groupFilter) {
-                                Text(text(.allGroups)).tag("*")
+                                Text(text(.allGroups)).tag(String?.none)
                                 ForEach(groups, id: \.self) { group in
-                                    Text(group.isEmpty ? text(.ungrouped) : group).tag(group)
+                                    Text(group.isEmpty ? text(.ungrouped) : group).tag(String?.some(group))
                                 }
                             }.settingsMenu(width: 110)
                             Picker(text(.all), selection: $typeFilter) {
@@ -96,13 +98,13 @@ struct FavoriteLocationsPane: View {
                         }
                         HStack(spacing: 14) {
                             Spacer()
-                            Button(text(.clearRecent)) { perform { try favorites.clearRecent() } }
+                            Button(text(.clearRecent)) { perform { try await favorites.clearRecent() } }
                                 .buttonStyle(.plain).font(.caption).foregroundStyle(.secondary)
                             Button(text(.checkLocations)) { favorites.checkAllAvailability() }
                                 .buttonStyle(.plain).font(.caption).foregroundStyle(.secondary)
                                 .disabled(favorites.isChecking)
                         }
-                        if rows.isEmpty {
+                        if visibleRows.isEmpty {
                             VStack(spacing: 9) {
                                 Image(systemName: "star").font(.system(size: 30)).foregroundStyle(FileMintStyle.accent)
                                 Text(text(.emptyTitle)).font(.callout.weight(.medium))
@@ -111,10 +113,10 @@ struct FavoriteLocationsPane: View {
                             }.frame(maxWidth: .infinity).padding(.vertical, 28).mintSurface()
                         } else {
                             LazyVStack(spacing: 0) {
-                                ForEach(rows) { item in
+                                ForEach(visibleRows) { item in
                                     favoriteRow(item)
-                                        .task(id: item.id) { await favorites.checkAvailability(item.id) }
-                                    if item.id != rows.last?.id { Divider().padding(.leading, 16) }
+                                        .task(id: item.bookmark) { await favorites.checkAvailability(item.id) }
+                                    if item.id != lastRowID { Divider().padding(.leading, 16) }
                                 }
                             }.mintSurface(padding: 0)
                         }
@@ -124,10 +126,10 @@ struct FavoriteLocationsPane: View {
                                 Spacer()
                                 Button(text(favorites.catalog.items.filter { selected.contains($0.id) }.allSatisfy(\.isPinned) ? .unpin : .pin)) {
                                     let allPinned = favorites.catalog.items.filter { selected.contains($0.id) }.allSatisfy { $0.isPinned }
-                                    perform { try favorites.setPinned(selected, to: !allPinned); selected.removeAll() }
+                                    perform { try await favorites.setPinned(selected, to: !allPinned); selected.removeAll() }
                                 }
                                 Button(text(.moveToGroup)) { batchGroup = ""; editingGroup = true }
-                                Button(text(.remove)) { perform { try favorites.remove(selected); selected.removeAll() } }
+                                Button(text(.remove)) { perform { try await favorites.remove(selected); selected.removeAll() } }
                             }.font(.caption).buttonStyle(MintButtonStyle()).padding(10).mintSurface(padding: 0)
                         }
                     }
@@ -157,10 +159,11 @@ struct FavoriteLocationsPane: View {
                     Button(text(.showBackup)) { NSWorkspace.shared.activateFileViewerSelecting([backup]) }
                         .buttonStyle(MintButtonStyle())
                 }
-            }.padding(1)
+            }.padding(1).disabled(favorites.isBusy)
             .dropDestination(for: URL.self) { urls, _ in
+                guard !favorites.isBusy else { return false }
                 perform {
-                    let result = try favorites.add(urls)
+                    let result = try await favorites.add(urls)
                     favorites.message = String(format: text(.added), result.added, result.duplicates)
                 }
                 return !urls.isEmpty
@@ -168,7 +171,7 @@ struct FavoriteLocationsPane: View {
         }
         .sheet(item: $editing) { item in
             FavoriteEditorSheet(item: item, language: language) { name, group in
-                perform { try favorites.rename(item.id, to: name); try favorites.setGroup([item.id], to: group) }
+                await performAndReport { try await favorites.updateDetails(item.id, name: name, group: group) }
             }
         }
         .sheet(isPresented: $editingGroup) {
@@ -179,7 +182,7 @@ struct FavoriteLocationsPane: View {
                     Spacer()
                     Button(text(.cancel)) { editingGroup = false }
                     Button(text(.saved)) {
-                        perform { try favorites.setGroup(selected, to: batchGroup); selected.removeAll() }
+                        perform { try await favorites.setGroup(selected, to: batchGroup); selected.removeAll() }
                         editingGroup = false
                     }.buttonStyle(MintButtonStyle(primary: true))
                 }
@@ -189,6 +192,9 @@ struct FavoriteLocationsPane: View {
         .onChange(of: filter) { _ in selected.removeAll() }
         .onChange(of: typeFilter) { _ in selected.removeAll() }
         .onChange(of: groupFilter) { _ in selected.removeAll() }
+        .onChange(of: groups) { values in
+            if let groupFilter, !values.contains(groupFilter) { self.groupFilter = nil }
+        }
     }
 
     private func filterButton(_ value: Filter, label: String) -> some View {
@@ -224,30 +230,32 @@ struct FavoriteLocationsPane: View {
                     .foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
             }.frame(maxWidth: .infinity, alignment: .leading)
                 .onTapGesture(count: 2) { locate(item.id) }
-            if favorites.unavailableIDs.contains(item.id) {
-                Label(text(.unavailable), systemImage: "exclamationmark.circle")
-                    .font(.caption).foregroundStyle(.orange)
-            } else {
+            VStack(alignment: .trailing, spacing: 3) {
                 Text(item.group.isEmpty ? text(.ungrouped) : item.group)
                     .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                if favorites.unavailableIDs.contains(item.id) {
+                    Label(text(.unavailable), systemImage: "exclamationmark.circle")
+                        .font(.caption).foregroundStyle(.orange)
+                        .help(text(.unavailableHint))
+                }
             }
-            Button { perform { try favorites.setPinned([item.id], to: !item.isPinned) } } label: {
+            Button { perform { try await favorites.setPinned([item.id], to: !item.isPinned) } } label: {
                 Image(systemName: item.isPinned ? "star.fill" : "star")
             }.buttonStyle(.plain).foregroundStyle(item.isPinned ? FileMintStyle.accent : Color.secondary)
                 .accessibilityLabel(text(item.isPinned ? .unpin : .pin))
             Menu {
                 Button(text(.locate)) { locate(item.id) }
                 if item.kind == .file {
-                    Button(text(.openFile)) { perform { try favorites.openFile(item.id) } }
+                    Button(text(.openFile)) { perform { try await favorites.openFile(item.id) } }
                 }
                 Button(text(.rename)) { editing = item }
-                Button(text(.relink)) { favorites.relink(item.id, language: language) }
+                Button(text(.relink)) { Task { await favorites.relink(item.id, language: language) } }
                 if item.isPinned {
-                    Button(text(.moveUp)) { perform { try favorites.movePinned(item.id, by: -1) } }
-                    Button(text(.moveDown)) { perform { try favorites.movePinned(item.id, by: 1) } }
+                    Button(text(.moveUp)) { perform { try await favorites.movePinned(item.id, by: -1) } }
+                    Button(text(.moveDown)) { perform { try await favorites.movePinned(item.id, by: 1) } }
                 }
                 Divider()
-                Button(text(.remove)) { perform { try favorites.remove([item.id]) } }
+                Button(text(.remove)) { perform { try await favorites.remove([item.id]) } }
             } label: { Image(systemName: "ellipsis").frame(width: 23, height: 25) }
                 .menuStyle(.borderlessButton).menuIndicator(.hidden)
                 .accessibilityLabel("\(item.name) — \(text(.rename))")
@@ -258,7 +266,7 @@ struct FavoriteLocationsPane: View {
                 provider.loadObject(ofClass: NSString.self) { object, _ in
                     guard let value = object as? String, UUID(uuidString: value) == sourceID else { return }
                     DispatchQueue.main.async {
-                        perform { try favorites.movePinned(sourceID, to: item.id) }
+                        perform { try await favorites.movePinned(sourceID, to: item.id) }
                         draggedID = nil
                     }
                 }
@@ -267,24 +275,30 @@ struct FavoriteLocationsPane: View {
     }
 
     private func locate(_ id: UUID) {
-        perform { try favorites.locate(id) }
+        perform { try await favorites.locate(id) }
     }
 
-    private func perform(_ action: () throws -> Void) {
-        do { try action() }
-        catch { favorites.message = error.localizedDescription }
+    private func perform(_ action: @escaping @MainActor () async throws -> Void) {
+        Task { await performAndReport(action) }
+    }
+
+    @discardableResult
+    private func performAndReport(_ action: @MainActor () async throws -> Void) async -> Bool {
+        do { try await action(); return true }
+        catch { favorites.message = error.localizedDescription; return false }
     }
 }
 
 private struct FavoriteEditorSheet: View {
     let item: FavoriteLocation
     let language: AppLanguage
-    let save: (String, String) -> Void
+    let save: (String, String) async -> Bool
     @Environment(\.dismiss) private var dismiss
     @State private var name: String
     @State private var group: String
+    @State private var isSaving = false
 
-    init(item: FavoriteLocation, language: AppLanguage, save: @escaping (String, String) -> Void) {
+    init(item: FavoriteLocation, language: AppLanguage, save: @escaping (String, String) async -> Bool) {
         self.item = item
         self.language = language
         self.save = save
@@ -300,10 +314,16 @@ private struct FavoriteEditorSheet: View {
             HStack {
                 Spacer()
                 Button(FavoriteText.cancel.text(language)) { dismiss() }
-                Button(FavoriteText.saved.text(language)) { save(name, group); dismiss() }
+                Button(FavoriteText.saved.text(language)) {
+                    isSaving = true
+                    Task {
+                        if await save(name, group) { dismiss() }
+                        isSaving = false
+                    }
+                }
                     .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     .buttonStyle(MintButtonStyle(primary: true))
             }
-        }.padding(22).frame(width: 380)
+        }.padding(22).frame(width: 380).disabled(isSaving)
     }
 }

@@ -4,6 +4,7 @@ import SwiftUI
 
 @MainActor
 final class PreferencesModel: ObservableObject {
+    static let shared = PreferencesModel()
     @Published var preferences = FileMintPreferences.default
     func save() {}
 }

@@ -95,8 +95,11 @@ configuration or feed now fails the release, even when other signatures pass.
 Keep the final files intact. If notarization is pending or its wait times out,
 the script retains the staging DMG and its submission ID. Check that same ID at
 Apple, then resume with `FILEMINT_RESUME_STAGE=/path/printed/by/script make
-release-local`. This verifies the original DMG hash and waits on the same
-submission; it does not upload again. If Apple rejects the submission or any
+release-local`. This verifies the submitted or recorded stapled DMG hash; a
+pending submission waits on the same ID, while a completed ticket is revalidated
+without another upload. Stapling uses a private copy and records its verified
+hash before replacing the submitted file, so interruptions preserve a recoverable
+stage. A matching existing appcast is verified and reused. If Apple rejects the submission or any
 other check fails, stop and diagnose before making a new candidate.
 
 No separate temporary app launch, UI review or website screenshot is required

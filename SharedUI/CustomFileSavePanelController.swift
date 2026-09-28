@@ -6,6 +6,7 @@ final class CustomFileSavePanelController: NSObject {
     static let shared = CustomFileSavePanelController()
 
     var hasActiveDraft: Bool { panel != nil || directoryPicker != nil || isCreating }
+    var hasActiveWrite: Bool { isCreating }
 
     private var createButton: NSButton?
     private var cancelButton: NSButton?

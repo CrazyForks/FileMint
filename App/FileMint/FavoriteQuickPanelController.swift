@@ -16,7 +16,7 @@ final class FavoriteQuickPanelController: NSObject, NSWindowDelegate {
         }
         let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 540, height: 360),
             styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: false)
-        panel.title = FavoriteText.title.text(PreferencesModel.shared.preferences.language)
+        panel.title = FavoriteText.title.text(settings.preferences.language)
         panel.contentMinSize = NSSize(width: 430, height: 320)
         panel.backgroundColor = FileMintStyle.backgroundNS
         panel.isReleasedWhenClosed = false
@@ -48,6 +48,7 @@ private struct FavoriteQuickView: View {
     }
 
     var body: some View {
+        let visibleItems = items
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Image(systemName: "star").foregroundStyle(FileMintStyle.accent)
@@ -61,16 +62,18 @@ private struct FavoriteQuickView: View {
             ScrollViewReader { proxy in
                 FavoriteSearchField(text: $query, placeholder: FavoriteText.searchPlaceholder.text(language),
                     move: { offset in
-                        guard !items.isEmpty else { return }
-                        selectedIndex = max(0, min(items.count - 1, selectedIndex + offset))
-                        withAnimation(.easeOut(duration: 0.15)) { proxy.scrollTo(selectedIndex, anchor: .center) }
+                        guard !visibleItems.isEmpty else { return }
+                        selectedIndex = max(0, min(visibleItems.count - 1, selectedIndex + offset))
+                        withAnimation(.easeOut(duration: 0.15)) {
+                            proxy.scrollTo(visibleItems[selectedIndex].id, anchor: .center)
+                        }
                     }, submit: locateSelected,
                     cancel: { FavoriteQuickPanelController.shared.close() })
                     .frame(height: 27).accessibilityIdentifier("favorites.quickSearch")
                     .onChange(of: query) { _ in selectedIndex = 0 }
                 ScrollView {
                     LazyVStack(spacing: 3) {
-                        ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                        ForEach(Array(visibleItems.enumerated()), id: \.element.id) { index, item in
                             Button { locate(item.id) } label: {
                                 HStack(spacing: 11) {
                                     Image(systemName: item.kind == .folder ? "folder" : "doc")
@@ -91,18 +94,22 @@ private struct FavoriteQuickView: View {
                                     .padding(.horizontal, 11).padding(.vertical, 8)
                                     .background(index == selectedIndex ? FileMintStyle.selection : Color.clear,
                                                 in: RoundedRectangle(cornerRadius: 7))
-                            }.buttonStyle(.plain).id(index)
+                            // Position changes during search; only the catalog
+                            // identity can safely key both row reuse and scrolling.
+                            }.buttonStyle(.plain).id(item.id)
                                 .accessibilityAddTraits(index == selectedIndex ? .isSelected : [])
                                 .contextMenu {
                                     Button(FavoriteText.relink.text(language)) {
-                                        favorites.relink(item.id, language: language)
+                                        Task { await favorites.relink(item.id, language: language) }
                                     }
                                     if item.kind == .file {
                                         Button(FavoriteText.openFile.text(language)) {
-                                            do {
-                                                try favorites.openFile(item.id)
-                                                FavoriteQuickPanelController.shared.close()
-                                            } catch { favorites.message = FavoriteText.locateFailed.text(language) }
+                                            Task {
+                                                do {
+                                                    try await favorites.openFile(item.id)
+                                                    FavoriteQuickPanelController.shared.close()
+                                                } catch { favorites.message = FavoriteText.locateFailed.text(language) }
+                                            }
                                         }
                                     }
                                 }
@@ -125,10 +132,13 @@ private struct FavoriteQuickView: View {
     }
 
     private func locate(_ id: UUID) {
-        do {
-            try favorites.locate(id)
-            FavoriteQuickPanelController.shared.close()
-        } catch { favorites.message = FavoriteText.locateFailed.text(language) }
+        guard !favorites.isBusy else { return }
+        Task {
+            do {
+                try await favorites.locate(id)
+                FavoriteQuickPanelController.shared.close()
+            } catch { favorites.message = FavoriteText.locateFailed.text(language) }
+        }
     }
 }
 

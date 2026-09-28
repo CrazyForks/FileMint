@@ -186,12 +186,14 @@ public enum TemplateValidationError: Error, LocalizedError {
     case emptyName
     case invalidExtension
     case duplicateExtension
+    case invalidRank
 
     public var errorDescription: String? {
         switch self {
         case .emptyName: "Enter a name for this file type."
         case .invalidExtension: "Enter a valid text-file extension."
         case .duplicateExtension: "This extension is already in your file types."
+        case .invalidRank: "The template order is invalid. Reload settings before adding a template."
         }
     }
 }
@@ -212,7 +214,7 @@ extension TemplateCatalog {
         return FileTemplate(id: id ?? "custom-\(UUID().uuidString)", displayName: name,
                             suggestedFileName: filename, group: existing?.group ?? "Custom", content: content,
                             isEnabled: existing?.isEnabled ?? true,
-                            rank: existing?.rank ?? ((templates.map(\.rank).max() ?? 0) + 10), fileExtension: suffix)
+                            rank: try existing?.rank ?? nextRank(in: templates), fileExtension: suffix)
     }
 
     public static func defaultTemplate(forExtension suffix: String, in templates: [FileTemplate],
@@ -232,12 +234,23 @@ extension TemplateCatalog {
     public static func migratingTemplates(_ templates: [FileTemplate], excludingBuiltInIDs removedIDs: Set<String> = []) -> [FileTemplate] {
         let ids = Set(templates.map(\.id))
         var result = sortedTemplates(from: templates)
+        // Leave room for migration and the next insertion without rejecting or
+        // losing valid neighboring templates from imported/older preferences.
+        if (result.last?.rank ?? 0) > Int.max - (builtInTemplates.count + 1) * 10 {
+            result = normalizedRanks(for: result)
+        }
         for var template in builtInTemplates where !ids.contains(template.id) && !removedIDs.contains(template.id) {
             template.rank = (result.map(\.rank).max() ?? 0) + 10
             template.isEnabled = false
             result.append(template)
         }
         return result
+    }
+
+    public static func nextRank(in templates: [FileTemplate]) throws -> Int {
+        let (rank, overflow) = (templates.map(\.rank).max() ?? 0).addingReportingOverflow(10)
+        guard !overflow else { throw TemplateValidationError.invalidRank }
+        return rank
     }
 
     public static func restoringBuiltIns(in templates: [FileTemplate]) -> [FileTemplate] {

@@ -37,8 +37,9 @@ codesign --force --sign - --timestamp=none "$OPEN_WITH_RECEIVER"
 swiftc -swift-version 6 -parse-as-library -target "arm64-apple-macos13.0" \
   App/FileMint/DesignSystem.swift App/FileMint/ResourceToolsController.swift App/FileMint/ResourceToolsView.swift \
   App/FileMint/PlainTextEditor.swift SharedUI/CustomFileSavePanelController.swift SharedUI/FolderAccess.swift \
-  App/FileMint/PreferencesModel.swift App/FileMint/LoginItemService.swift SharedUI/FileToolAppearance.swift \
-  FinderSyncExtension/FileMintFinderSync/FinderIntegrationStatus.swift \
+  SharedUI/FileToolAppearance.swift \
+  App/FileMint/FavoriteLocationsModel.swift App/FileMint/FavoriteQuickPanelController.swift \
+  App/FileMint/FavoriteFeedbackController.swift \
   App/FileMint/OpenWithApplicationAccess.swift App/FileMint/FileOperationCoordinator.swift \
   scripts/open_with_smoke.swift "${OPEN_WITH_LINK[@]}" \
   -o "$OPEN_WITH_APP/Contents/MacOS/OpenWithSmoke"

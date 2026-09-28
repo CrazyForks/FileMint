@@ -60,8 +60,10 @@ final class DesignUISmoke: NSObject, NSApplicationDelegate {
         _ = try favoritesCatalog.add([
             FavoriteLocation(url: example.source,
                 bookmark: try example.source.bookmarkData(options: .withSecurityScope,
-                    includingResourceValuesForKeys: nil, relativeTo: nil), device: example.device,
-                inode: example.inode, kind: .file, name: "Mountain.png", group: "设计", isPinned: true),
+                    includingResourceValuesForKeys: nil, relativeTo: nil),
+                // Simulate a saved favorite from before the volume was remounted.
+                device: example.device + 37, inode: example.inode, createdAt: example.createdAt,
+                kind: .file, name: "Mountain.png", group: "设计", isPinned: true),
             FavoriteLocation(url: lake.source,
                 bookmark: try lake.source.bookmarkData(options: .withSecurityScope,
                     includingResourceValuesForKeys: nil, relativeTo: nil), device: lake.device,

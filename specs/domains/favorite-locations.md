@@ -16,7 +16,13 @@ Load for: saved file/folder shortcuts, quick lookup, Finder add and locate menus
 - The settings page has one virtualized list with search over saved display names, groups and stored path text; file/folder/unavailable filters; flat groups; pinned order; and batch pin, group and remove actions. The quick palette focuses search on open, supports arrows, Return and Escape, and searches the saved catalog only. A common name is disambiguated by parent path. Duplicate entries are not created.
 - Pin order is user controlled. The recent section ranks explicit additions and successful locate actions, so a newly added item is immediately reachable. Users can clear locally stored locate timestamps; pinned and recent entries are deduplicated. Neither menu nor search discovers files on disk.
 - Store user-created security-scoped bookmarks, stable file identity, display name, kind, group, pin order and last-used time in a private, atomically replaced catalog. Only the main app writes. The Finder extension reads a cached bounded projection. On use, resolve and validate the bookmark and identity; a same-path replacement, missing item, unavailable volume or changed authorization must not open a guessed target. Keep the entry and offer explicit Relink or Remove. A damaged catalog blocks new writes; the settings page offers a confirmed backup-and-reset operation that preserves its original bytes, without changing Finder scope or overwriting main preferences.
+- File identity uses the bookmark's persistent volume UUID, file number and creation time; a device-number change after remounting must not invalidate the same item. Older bookmarks without a volume UUID retain the stricter device-number check. Availability checks and activation apply the same identity and kind rules.
+- A row keeps its group visible alongside an unavailable warning. All Groups is distinct from every user-entered group name (including `*`); removing the last item from the selected group returns the filter to All Groups.
 - The interface stays responsive with at least 1,000 saved entries; large lists do not increase Finder menu item count. Saved paths/content are never logged. Use bilingual native controls, keyboard operation, VoiceOver labels, and restrained adaptive FileMint styling.
+- Catalog I/O and bookmark/identity lookup run away from the UI thread. Serialize
+  catalog edits against the latest saved state and publish versioned snapshots;
+  loading or an older completion must never overwrite a later edit. In-flight
+  catalog writes and activations hold the normal quit/updater restart guard.
 
 ## Working context
 

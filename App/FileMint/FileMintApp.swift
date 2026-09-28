@@ -62,10 +62,12 @@ private struct FileMintMenu: View {
         Menu(FavoriteText.title.text(model.preferences.language)) {
             ForEach(favorites.quickItems) { item in
                 Button(item.name) {
-                    do { try favorites.locate(item.id) }
-                    catch {
-                        favorites.message = FavoriteText.locateFailed.text(model.preferences.language)
-                        FavoriteQuickPanelController.shared.show()
+                    Task {
+                        do { try await favorites.locate(item.id) }
+                        catch {
+                            favorites.message = FavoriteText.locateFailed.text(model.preferences.language)
+                            FavoriteQuickPanelController.shared.show()
+                        }
                     }
                 }
             }

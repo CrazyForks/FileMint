@@ -123,14 +123,21 @@ final class FileOperationCoordinator: NSObject, NSSharingServiceDelegate {
             try requireResolvedSelection(selection)
             guard FavoriteLocationsPolicy.canAdd(selection, isItemMenu: true,
                 preferences: currentPreferences) else { throw FavoriteLocationError.invalidSelection }
-            let result = try FavoriteLocationsModel.shared.add(selection)
+            let preferencesFile = self.preferencesFile
+            let result = try await FavoriteLocationsModel.shared.add(selection) {
+                // Bookmark capture now suspends the main actor. Recheck policy
+                // inside the serialized transaction before publishing the add.
+                let preferences = FileMintPreferencesStore(fileURL: preferencesFile).load()
+                return FavoriteLocationsPolicy.canAdd(selection, isItemMenu: true, preferences: preferences)
+                    && selection.allSatisfy { FolderScope.containsResolvedItem($0, in: preferences.monitoredFolderURLs) }
+            }
             let language = currentPreferences.language
             let message = String(format: FavoriteText.added.text(language), result.added, result.duplicates)
             FavoriteLocationsModel.shared.message = message
             FavoriteFeedbackController.show(message)
 
         case .favoriteLocate(let id):
-            try FavoriteLocationsModel.shared.locate(id)
+            try await FavoriteLocationsModel.shared.locate(id)
 
         case .favoriteSearch:
             FavoriteQuickPanelController.shared.show()

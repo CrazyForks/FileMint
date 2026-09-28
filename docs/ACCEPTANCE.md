@@ -3,6 +3,33 @@
 Checked on 2026-09-14, macOS 26.6.2, Apple silicon. Minimum deployment target:
 macOS 13. Release bundles contain arm64 and x86_64 executables.
 
+## Favorite availability, Finder locate and groups — 2026-09-28
+
+Checked on macOS 27.2, Apple silicon, `684dba2` plus the uncommitted favorite
+repair worktree. Contract: [Favorite locations](../specs/domains/favorite-locations.md).
+
+- Read-only diagnosis found an existing saved item with matching inode, creation
+  time and bookmark volume UUID, but a changed device number. Its group was
+  already saved. No user catalog was modified during diagnosis or verification.
+- `make verify` passed 158 Core and 14 image tests plus the public Harness, CLI
+  and script checks. The identity regressions cover device renumbering, a
+  different/missing volume UUID, wrong kind, changed creation time, same-path
+  replacement and the legacy device fallback. The unsigned app/extension built.
+- `scripts/build_design_ui_harness.sh` ran production settings/model code with
+  an isolated catalog and a deliberately mismatched saved device number. That
+  item stayed available; the missing fixture retained its warning and group.
+- Native UI checks passed: batch assignment to `*`, filtering to that group,
+  returning to All Groups after moving its final item to Ungrouped, and saving
+  a Chinese group through Name and Group. The saved fixture catalog was read
+  back to confirm the Chinese group and successful-locate timestamp.
+- Clicking Show in Finder on the device-renumbered fixture opened its parent
+  with the expected file selected. The test Finder window and fixture app were
+  closed afterward. Logs: `build/favorite-repair-qa/verify.log`, `build.log`, and
+  `ui-build.log` (local, ignored).
+- Not run: installed signed-app bookmark access, installed Finder extension
+  callbacks, folder/package locate, and macOS 13 runtime. No installed app was
+  replaced and nothing was published.
+
 ## Settings setup and template interaction — 2026-09-24
 
 Checked on macOS 27.2, Apple silicon, `7a482bb` plus the uncommitted
@@ -962,3 +989,29 @@ successful source/release/Pages workflows, and public 0.5.10 → 0.6.0 update.
 The original `/Applications/FileMint.app` and loaded Finder extension remained
 at 0.5.10. Installed 0.6.0 Finder callbacks, Intel and macOS 13 runtime, and
 managed-device authorization remain unverified.
+
+## 2026-09-28 — Full-review fixes and isolated favorites QA
+
+Tested `684dba2` plus the existing favorite-location repair and this worktree's
+[review fixes](tasks/2026-09-28-review-fixes.md). No installed app was replaced.
+
+- `make verify` passed: 164 Core tests, 14 image tests, 5 public Harness cases,
+  10 CLI checks, and appcast/release/notarization/signing/context checks. New cases
+  cover ordinary-quit busy states, preserved POSIX permission errors, extreme
+  template ranks, serialized off-main catalog edits, cleared recent entries and
+  notarization recovery before/after stapling. Apple commands were local stubs.
+- Unsigned Release app and Finder extension build passed. Move and Open with App
+  sandbox QA entrypoints compile and sign their isolated fixtures again; their
+  interactive authorization/receiver flows were not rerun here.
+- `make verify-favorite-model` passed with a private 1,000-entry catalog, concurrent
+  edits, atomic name/group changes, policy rejection, damage backup/reset and busy
+  guard release. It does not read real preferences or favorite catalogs.
+- Isolated native UI (`build/design-ui-harness.noindex/run.UAlSEC`, then the final
+  `run.KEV5TR`) confirmed clearing Recent preserves All, pinning updates the row,
+  and name/group editing saves both values. Quick-search QA exposed position-ID
+  row reuse; after switching to UUIDs, searching `Lake` showed only `Lake.png`,
+  Return closed the palette and Finder selected that exact fixture file. Saved
+  catalog readback confirmed its locate timestamp and subsequent name/group edit.
+- Build/UI evidence is scoped to these fixtures. Installed Finder callbacks,
+  macOS 13 runtime, TCC authorization prompts, actual notarization and public
+  release/update acceptance were not exercised. No commit, push or publication.

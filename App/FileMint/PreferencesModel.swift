@@ -288,10 +288,16 @@ final class PreferencesModel: ObservableObject {
         let assets = documentTemplates
         do {
             let reference = try await Task.detached(priority: .userInitiated) { try assets.importDocument(at: source) }.value
+            let rank: Int
+            do { rank = try TemplateCatalog.nextRank(in: preferences.templates) }
+            catch {
+                _ = await Task.detached(priority: .utility) { try? assets.remove(reference) }.value
+                throw error
+            }
             let previous = preferences
             var template = FileTemplate(id: "document-\(reference.id.uuidString)", displayName: source.deletingPathExtension().lastPathComponent,
                 suggestedFileName: source.lastPathComponent, group: "Custom", content: "",
-                rank: (preferences.templates.map(\.rank).max() ?? 0) + 10, fileExtension: reference.kind.rawValue)
+                rank: rank, fileExtension: reference.kind.rawValue)
             template.document = reference
             preferences.templates.append(template)
             if !save() {

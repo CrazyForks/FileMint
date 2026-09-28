@@ -1,4 +1,5 @@
 import AppKit
+import FileMintCore
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -15,7 +16,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        if FileOperationCoordinator.shared.isBusy { return .terminateCancel }
+        guard ApplicationTerminationPolicy.canQuit(
+            pendingCreations: PreferencesModel.shared.pendingCreationCount,
+            hasActiveWrite: CustomFileSavePanelController.shared.hasActiveWrite,
+            hasFileOperation: FileOperationCoordinator.shared.isBusy,
+            hasFavoriteOperation: FavoriteLocationsModel.sharedIsBusy) else { return .terminateCancel }
         if UpdateModel.shared.isCommittingInstallation && !UpdateModel.shared.canSafelyRestart {
             return .terminateCancel
         }

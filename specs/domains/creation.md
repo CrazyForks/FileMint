@@ -63,6 +63,8 @@ Part of the [FileMint SPEC](../SPEC.md). This file owns the behavior below; othe
   replaces the entire prior suffix. File names cannot escape the destination.
 - An update-triggered restart waits for an open draft or in-flight creation;
   it never discards the draft or interrupts a file write.
+- Ordinary Quit also waits for in-flight creation and template import work. A
+  write in progress cannot be interrupted just because no update is installing.
 - Drafts are not stored. Cancelling never creates a file or changes the destination.
 
 ## Clipboard image creation

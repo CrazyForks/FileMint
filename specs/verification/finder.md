@@ -30,3 +30,11 @@ production coordinator sends a real file/folder batch to a native receiver app.
 It checks the received selection, source preservation, clipboard, busy guard and
 single-use ticket. This does not prove installed Finder callbacks or compatibility
 with every chosen application. See [Open with App QA](../../docs/FINDER_QA.md#open-with-app).
+
+`make verify-favorite-model` compiles the production favorite model against Core
+and runs it with an isolated catalog. It covers asynchronous initial loading,
+1,000 entries, concurrent edits, recent clearing, revoked add policy, damage
+recovery and releasing the busy guard. It does not launch Finder or read real
+favorite/settings files. Native UI checks also filter quick-search results from
+several rows down to one, ensuring the displayed row and Return action use that
+entry's stable ID; clearing history must empty Recent while preserving All.

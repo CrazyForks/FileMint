@@ -70,9 +70,20 @@ public final class FileCreationService {
     }
 
     public func createFile(_ request: FileCreationRequest, now: Date = Date()) throws -> FileCreationResult {
-        var isDirectory: ObjCBool = false
-        guard fileManager.fileExists(atPath: request.destinationDirectory.path, isDirectory: &isDirectory),
-              isDirectory.boolValue else {
+        guard request.destinationDirectory.isFileURL else {
+            throw FileMintError.destinationIsNotDirectory(request.destinationDirectory)
+        }
+        // stat follows a selected directory symlink, as the previous existence
+        // check did, but retains EACCES/EPERM for the app's authorization retry.
+        var attributes = stat()
+        let status = request.destinationDirectory.withUnsafeFileSystemRepresentation {
+            $0.map { stat($0, &attributes) } ?? -1
+        }
+        guard status == 0 else {
+            throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno),
+                          userInfo: [NSFilePathErrorKey: request.destinationDirectory.path])
+        }
+        guard attributes.st_mode & mode_t(S_IFMT) == mode_t(S_IFDIR) else {
             throw FileMintError.destinationIsNotDirectory(request.destinationDirectory)
         }
 
