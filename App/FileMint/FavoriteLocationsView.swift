@@ -49,6 +49,10 @@ struct FavoriteLocationsPane: View {
         let lastRowID = visibleRows.last?.id
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
+                PreferenceRow(title: text(.title)) {
+                    MenuIconControl(slot: .favoriteLocations,
+                        customization: settings.menuIconBinding(for: .favoriteLocations), language: language)
+                }.mintSurface()
                 HStack {
                     SettingsSectionTitle(title: text(.savedItems))
                     Text("\(favorites.catalog.items.count)").font(.caption).foregroundStyle(.secondary)

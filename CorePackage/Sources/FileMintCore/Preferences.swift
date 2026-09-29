@@ -50,6 +50,7 @@ public struct FileMintPreferences: Codable, Equatable, Sendable {
     public var openWith = OpenWithPreferences()
     public var favoriteLocations = FavoriteLocationsPreferences()
     public var newFileMenuPlacement: NewFileMenuPlacement = .submenu
+    public var menuIcons: [String: MenuIconCustomization] = [:]
     private var folderScopeVersion = 2
 
     public init(
@@ -103,6 +104,7 @@ public struct FileMintPreferences: Codable, Equatable, Sendable {
         case openWith
         case favoriteLocations
         case newFileMenuPlacement
+        case menuIcons
     }
 
     public init(from decoder: Decoder) throws {
@@ -144,6 +146,8 @@ public struct FileMintPreferences: Codable, Equatable, Sendable {
         openWith = (try? container.decode(OpenWithPreferences.self, forKey: .openWith)) ?? OpenWithPreferences()
         favoriteLocations = (try? container.decode(FavoriteLocationsPreferences.self, forKey: .favoriteLocations)) ?? FavoriteLocationsPreferences()
         newFileMenuPlacement = (try? container.decode(NewFileMenuPlacement.self, forKey: .newFileMenuPlacement)) ?? .submenu
+        menuIcons = ((try? container.decode([String: MenuIconCustomization].self, forKey: .menuIcons)) ?? [:])
+            .filter { MenuIconSlot(rawValue: $0.key) != nil }
     }
 
     public static var `default`: FileMintPreferences {

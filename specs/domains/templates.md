@@ -23,6 +23,14 @@ Part of the [FileMint SPEC](../SPEC.md). This file owns the behavior below; othe
 - Older preferences retain language, folder selection, template customizations,
   enabled state and order; newly added presets are appended disabled.
 - Do not expose nonfunctional favorites, icon toggles, themes or dashboards.
+- Every saved type has a default SF Symbol based on its file suffix (a generic
+  document symbol for unknown suffixes), visible in Templates & Types and the
+  Finder New File choices. The type editor can select another available system
+  symbol and primary/secondary colors or reset to the suffix default. A custom
+  icon belongs to the stable template ID, persists with built-in and user types,
+  and survives ordinary edits, ordering and settings import. Changing a suffix
+  recomputes only an uncustomized default. Restoring built-ins restores their
+  default icons while retaining custom types and their chosen icons.
 
 ## Multiple templates and defaults
 

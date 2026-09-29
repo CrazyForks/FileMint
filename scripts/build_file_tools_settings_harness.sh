@@ -7,7 +7,9 @@ CORE_BUILD="$(swift build --package-path CorePackage --show-bin-path)"
 mkdir -p build/file-tools-settings-harness.noindex
 FIXTURE_DIRECTORY="$(mktemp -d "$PWD/build/file-tools-settings-harness.noindex/run.XXXXXX")"
 APP_PATH="$FIXTURE_DIRECTORY/FileMintToolsUIQA.app"
-mkdir -p "$APP_PATH/Contents/MacOS"
+mkdir -p "$APP_PATH/Contents/MacOS" "$APP_PATH/Contents/Resources"
+cp Resources/SFSymbolNames.txt Resources/SFSymbolRestrictedNames.txt \
+  Resources/SFSymbolCatalog-LICENSE.txt "$APP_PATH/Contents/Resources/"
 python3 - "$APP_PATH" "$FIXTURE_DIRECTORY" <<'PY'
 import pathlib, plistlib, sys
 app, root = map(pathlib.Path, sys.argv[1:])
@@ -22,7 +24,9 @@ else
   CORE_LINK=(-I "$CORE_BUILD/Modules" "$CORE_BUILD"/FileMintCore.build/*.o)
 fi
 swiftc -swift-version 6 -parse-as-library \
-  App/FileMint/DesignSystem.swift App/FileMint/FileToolsSettingsView.swift SharedUI/FileToolAppearance.swift \
+  App/FileMint/DesignSystem.swift App/FileMint/FileToolsSettingsView.swift App/FileMint/MenuIconControl.swift \
+  App/FileMint/SystemSymbolCatalog.swift \
+  SharedUI/FileToolAppearance.swift \
   scripts/file_tools_settings_smoke.swift "${CORE_LINK[@]}" \
   -o "$APP_PATH/Contents/MacOS/FileMintToolsUIQA"
 echo "Built isolated native settings fixture:"

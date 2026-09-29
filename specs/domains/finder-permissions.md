@@ -65,6 +65,8 @@ Part of the [FileMint SPEC](../SPEC.md). This file owns the behavior below; othe
 - Finder APIs remain in FinderSyncExtension; deterministic rules in CorePackage;
   SwiftUI settings remain in App/FileMint. Shared AppKit creation UI may be
   compiled into both app and extension.
+- Menu icon choices are read from the cached preferences snapshot while building
+  the menu. Rendering a symbol never reads user files or changes captured targets.
 - Finder & Folders offers a user-triggered **Toggle Finder Hidden Items** action,
   also available from FileMint's menu bar. Check actual Accessibility trust only
   on that action and when refreshing the displayed status; request the system

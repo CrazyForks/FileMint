@@ -3,6 +3,7 @@ import FileMintCore
 import FileMintImages
 import UniformTypeIdentifiers
 import Foundation
+import SwiftUI
 
 @MainActor
 final class PreferencesModel: ObservableObject {
@@ -201,6 +202,17 @@ final class PreferencesModel: ObservableObject {
         }
     }
 
+    func menuIconBinding(for slot: MenuIconSlot) -> Binding<MenuIconCustomization?> {
+        Binding(
+            get: { self.preferences.menuIcons[slot.rawValue] },
+            set: { value in
+                let previous = self.preferences
+                self.preferences.menuIcons[slot.rawValue] = value
+                if !self.save() { self.preferences = previous }
+            }
+        )
+    }
+
     func resetTemplates() {
         let previous = preferences
         preferences.templates = TemplateCatalog.restoringBuiltIns(in: preferences.templates)
@@ -224,13 +236,15 @@ final class PreferencesModel: ObservableObject {
         return preferences.templates.indices.contains(index + offset)
     }
 
-    func saveType(name: String, suffix: String, content: String, id: String?, suggestedFileName: String? = nil) throws {
+    func saveType(name: String, suffix: String, content: String, id: String?, suggestedFileName: String? = nil,
+                  customMenuIcon: MenuIconCustomization?) throws {
         let previous = preferences
         let document = preferences.templates.first { $0.id == id }?.document
         if let document, suffix.lowercased() != document.kind.rawValue { throw DocumentTemplateError.unsupported }
         var type = try TemplateCatalog.customTemplate(name: name, fileExtension: suffix, content: document == nil ? content : "",
                                                        id: id, in: preferences.templates, suggestedFileName: suggestedFileName)
         type.document = document
+        type.customMenuIcon = customMenuIcon
         if let index = preferences.templates.firstIndex(where: { $0.id == type.id }) { preferences.templates[index] = type }
         else { preferences.templates.append(type) }
         if !save() { preferences = previous }

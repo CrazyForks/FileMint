@@ -67,8 +67,8 @@ Part of the [FileMint SPEC](../SPEC.md). This file owns the behavior below; othe
   and noninteractive. An individual disabled tool retains its available checkbox,
   with a muted icon and disabled secondary controls. Preserve readable contrast,
   wrapping, scrolling and native keyboard/accessibility behavior at minimum size.
-- In submenu mode, the New File Finder entry has the small FileMint logo and a
-  localized label. In main-menu mode, New File… carries that logo. File & Folder Tools uses the system
+- In submenu mode, the New File Finder entry has the small FileMint logo by default and a
+  localized label. New File… carries that logo by default at either menu level. File & Folder Tools uses the system
   `wrench.and.screwdriver` symbol in mint/blue; the temporary Move Selected
   Items Here entry uses `arrow.right.square` in mint/teal. Both are 16 × 16
   palette-colored images that keep their theme colors in the native menu and
@@ -77,11 +77,28 @@ Part of the [FileMint SPEC](../SPEC.md). This file owns the behavior below; othe
   names use blue `doc.on.doc`, paths indigo `link`, move teal `folder`, permanent
   deletion orange `trash`, AirDrop purple `airplayaudio`, and desktop aliases blue
   `arrowshape.turn.up.right`. The temporary move
-  destination retains its mint/teal icon in either location. Use 16 × 16 non-template
-  menu images; color supplements recognizable shapes and text. New-file format
-  choices and the other creation controls remain text only. The Finder
-  toolbar and macOS menu bar retain the small template glyph those entry points
-  require. No icon preference.
+  destination retains its mint/teal icon in either location. Default icons use
+  16 × 16 non-template menu images; color supplements recognizable shapes and
+  text. New-file actions and every template choice have a meaningful default
+  system symbol. The Finder toolbar and macOS menu bar retain the small template
+  glyph those entry points require.
+- Finder menu icon customization covers the New File root and its actions,
+  every template, the File & Folder Tools root and children (including Move Here),
+  the Resource Tools root and children, and the Open with App and Favorite
+  Locations roots. Users search and browse a bundled catalog of system symbol
+  names, choose an available SF Symbol and primary/secondary colors with a live
+  preview, and can reset each entry to its default. The catalog excludes
+  restricted and deprecated names, rejects known restricted names even when
+  entered manually except for an action's own referential default, presents
+  results incrementally, and checks
+  actual availability on the running macOS version. An exact name field permits
+  newer symbols not yet in the bundled catalog. Use the
+  system's symbol and palette rendering APIs; do not import arbitrary images or
+  fetch icon assets. The selected icon follows the action across main-menu and
+  submenu placement. Keep text labels, keyboard access and light/dark/menu
+  selection legibility. Configured App entries continue to use their app icons;
+  Favorite Locations child actions and saved-item entries keep their existing
+  icons. Their icons are not customizable.
 - App logo: a distinctive folded-paper F in fresh mint on a warm porcelain
   macOS tile. Dock/application assets use the image master; menu bar and Finder
   toolbar use a separately drawn crisp monochrome F silhouette. No medical-style

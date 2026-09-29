@@ -2,8 +2,9 @@ import SwiftUI
 import FileMintCore
 
 @ViewBuilder
-private func resourceToolIcon(_ tool: ResourceTool, size: CGFloat) -> some View {
-    if let image = FileToolAppearance.image(for: tool, size: size) {
+private func resourceToolIcon(_ tool: ResourceTool, size: CGFloat,
+                              customization: MenuIconCustomization? = nil) -> some View {
+    if let image = FileToolAppearance.image(for: tool, size: size, customization: customization) {
         Image(nsImage: image).resizable().interpolation(.high).scaledToFit()
     } else {
         Image(systemName: tool.symbol).font(.system(size: size, weight: .regular))
@@ -27,7 +28,8 @@ struct ResourceToolsPane: View {
                     VStack(alignment: .leading, spacing: 22) {
                         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 13) {
                             ForEach(ResourceTool.allCases) { tool in
-                                ResourceToolCard(tool: tool, language: model.preferences.language) {
+                                ResourceToolCard(tool: tool, language: model.preferences.language,
+                                    customization: model.preferences.menuIcons[tool.menuIconSlot.rawValue]) {
                                     launchTool(tool)
                                 }
                             }
@@ -58,19 +60,28 @@ struct ResourceToolsPane: View {
                     .labelsHidden().toggleStyle(SmallSettingsSwitchStyle())
                     .onChange(of: model.preferences.resourceTools.isEnabled) { _ in model.save() }
             }.mintSurface()
+            PreferenceRow(title: model.text(.resourceTools)) {
+                MenuIconControl(slot: .resourceTools, customization: model.menuIconBinding(for: .resourceTools),
+                    language: model.preferences.language)
+            }.mintSurface()
             VStack(spacing: 15) {
                 ForEach(ResourceTool.allCases) { tool in
                     if tool != ResourceTool.allCases.first { Divider() }
                     PreferenceRow(title: tool.title(model.preferences.language).replacingOccurrences(of: "…", with: ""),
                         detail: tool.summary(model.preferences.language)) {
-                        Toggle(tool.title(model.preferences.language), isOn: Binding(
-                            get: { model.preferences.resourceTools.enabledTools.contains(tool) },
-                            set: { value in
-                                if value { model.preferences.resourceTools.enabledTools.insert(tool) }
-                                else { model.preferences.resourceTools.enabledTools.remove(tool) }
-                                model.save()
-                            })).labelsHidden().toggleStyle(SmallSettingsSwitchStyle())
-                            .accessibilityIdentifier("resourceTools.\(tool.rawValue)")
+                        HStack(spacing: 12) {
+                            MenuIconControl(slot: tool.menuIconSlot,
+                                customization: model.menuIconBinding(for: tool.menuIconSlot),
+                                language: model.preferences.language)
+                            Toggle(tool.title(model.preferences.language), isOn: Binding(
+                                get: { model.preferences.resourceTools.enabledTools.contains(tool) },
+                                set: { value in
+                                    if value { model.preferences.resourceTools.enabledTools.insert(tool) }
+                                    else { model.preferences.resourceTools.enabledTools.remove(tool) }
+                                    model.save()
+                                })).labelsHidden().toggleStyle(SmallSettingsSwitchStyle())
+                                .accessibilityIdentifier("resourceTools.\(tool.rawValue)")
+                        }
                     }
                 }
             }.mintSurface().disabled(!model.preferences.resourceTools.isEnabled)
@@ -83,12 +94,13 @@ struct ResourceToolsPane: View {
 private struct ResourceToolCard: View {
     let tool: ResourceTool
     let language: AppLanguage
+    let customization: MenuIconCustomization?
     let action: () -> Void
     @State private var hovering = false
     var body: some View {
         Button(action: action) {
             HStack(alignment: .top, spacing: 13) {
-                resourceToolIcon(tool, size: 21).frame(width: 25, height: 25).padding(.top, 2)
+                resourceToolIcon(tool, size: 21, customization: customization).frame(width: 25, height: 25).padding(.top, 2)
                 VStack(alignment: .leading, spacing: 7) {
                     Text(tool.title(language).replacingOccurrences(of: "…", with: "")).font(.system(size: 13, weight: .medium))
                     Text(tool.summary(language)).font(.system(size: 11)).foregroundStyle(.secondary)

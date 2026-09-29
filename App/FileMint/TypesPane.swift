@@ -90,6 +90,10 @@ struct TypesPane: View {
                 .accessibilityLabel(model.templateDisplayName(for: template))
             Button { selection = template.id } label: {
                 HStack(spacing: 12) {
+                    if let icon = FileToolAppearance.image(for: template, size: 24) {
+                        Image(nsImage: icon).resizable().interpolation(.high)
+                            .frame(width: 24, height: 24).accessibilityHidden(true)
+                    }
                     Text(template.fileExtension.uppercased())
                         .font(.system(size: 9, weight: .medium, design: .monospaced))
                         .frame(width: 34, height: 38)
@@ -180,6 +184,7 @@ private struct TypeEditorDraft: Identifiable {
     var content = ""
     var suggestedFileName = ""
     var isDocument = false
+    var customMenuIcon: MenuIconCustomization?
     init() {}
     init(_ type: FileTemplate) {
         templateID = type.id
@@ -188,6 +193,7 @@ private struct TypeEditorDraft: Identifiable {
         suggestedFileName = type.suggestedFileName
         content = type.content
         isDocument = type.document != nil
+        customMenuIcon = type.customMenuIcon
     }
 }
 
@@ -213,6 +219,13 @@ private struct TypeEditor: View {
                 Text(model.text(.defaultFileName)).font(.system(size: 11)).foregroundStyle(.secondary)
                 TextField("Untitled.\(draft.suffix.isEmpty ? "txt" : draft.suffix)", text: $draft.suggestedFileName)
             }
+            HStack {
+                Text(model.preferences.language.resolved() == .chinese ? "菜单图标" : "Menu icon")
+                    .font(.system(size: 11)).foregroundStyle(.secondary)
+                Spacer()
+                MenuIconControl(template: iconPreviewTemplate, customization: $draft.customMenuIcon,
+                    language: model.preferences.language)
+            }
             if draft.isDocument {
                 Text(model.text(.documentTemplateHint)).font(.callout).foregroundStyle(.secondary)
             } else {
@@ -233,10 +246,16 @@ private struct TypeEditor: View {
             .textFieldStyle(.roundedBorder).onAppear { nameFocused = true }
     }
 
+    private var iconPreviewTemplate: FileTemplate {
+        FileTemplate(id: draft.templateID ?? "preview", displayName: draft.name,
+            suggestedFileName: draft.suggestedFileName, group: "Custom", content: "",
+            rank: 0, fileExtension: draft.suffix)
+    }
+
     private func save() {
         do {
             try model.saveType(name: draft.name, suffix: draft.suffix, content: draft.content, id: draft.templateID,
-                suggestedFileName: draft.suggestedFileName)
+                suggestedFileName: draft.suggestedFileName, customMenuIcon: draft.customMenuIcon)
             if let error = model.lastError { self.error = error } else { dismiss() }
         } catch TemplateValidationError.duplicateExtension { error = model.text(.duplicateType) }
         catch TemplateValidationError.emptyName { error = model.text(.emptyTypeName) }

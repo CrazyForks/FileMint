@@ -6,52 +6,112 @@ enum FileToolAppearance {
     static let openWithSymbol = "square.stack.3d.up"
     private static let applicationIcons = ApplicationIconCache()
 
-    static func image(for tool: FileTool, size: CGFloat = 16) -> NSImage? {
-        switch tool {
-        case .copyNames: image("doc.on.doc", palette: [.systemBlue, .systemCyan], size: size)
-        case .copyPaths: image("link", palette: [.systemIndigo, .systemBlue], size: size)
-        case .move: image("folder", palette: [.systemTeal, .systemMint], size: size)
-        case .permanentDelete: image("trash", palette: [.systemOrange, .systemRed], size: size)
-        case .desktopAlias: image("arrowshape.turn.up.right", palette: [.systemBlue, .systemTeal], size: size)
-        case .airDrop: image("airplayaudio", palette: [.systemPurple, .systemIndigo], size: size)
-        }
+    static func image(for tool: FileTool, size: CGFloat = 16,
+                      customization: MenuIconCustomization? = nil) -> NSImage? {
+        image(for: tool.menuIconSlot, customization: customization, size: size)
     }
 
-    static func image(for tool: ResourceTool, size: CGFloat = 16) -> NSImage? {
-        let palette: [NSColor] = switch tool {
-        case .convert: [.systemBlue, .systemTeal]
-        case .compress: [.systemOrange, .systemRed]
-        case .resize: [.systemIndigo, .systemBlue]
-        case .icons: [.systemPurple, .systemPink]
-        case .stitch: [.systemMint, .systemTeal]
-        case .ocr: [.systemGreen, .systemBlue]
-        case .removeMetadata: [.systemMint, .systemGreen]
-        }
-        return image(tool.symbol, palette: palette, size: size)
+    static func image(for tool: ResourceTool, size: CGFloat = 16,
+                      customization: MenuIconCustomization? = nil) -> NSImage? {
+        image(for: tool.menuIconSlot, customization: customization, size: size)
     }
 
     static var toolsImage: NSImage? {
-        image("wrench.and.screwdriver", palette: [.systemMint, .systemBlue])
+        image(for: .fileTools)
     }
 
     static var moveHereImage: NSImage? {
-        image("arrow.right.square", palette: [.systemMint, .systemTeal])
+        image(for: .moveHere)
     }
 
     static var resourceToolsImage: NSImage? {
-        image("photo.on.rectangle", palette: [.systemMint, .systemBlue])
+        image(for: .resourceTools)
     }
 
     static var favoriteImage: NSImage? {
-        image("star", palette: [.systemMint, .systemYellow])
+        image(for: .favoriteLocations)
     }
 
     static var openWithImage: NSImage? {
-        image(openWithSymbol, palette: [.systemMint, .systemTeal])
+        image(for: .openWith)
+    }
+
+    static func image(for slot: MenuIconSlot, customization: MenuIconCustomization? = nil,
+                      size: CGFloat = 16, defaultBundle: Bundle? = nil) -> NSImage? {
+        if let customization, let chosen = image(for: customization, size: size) {
+            return chosen
+        }
+        if (slot == .newFile || slot == .customNewFile), let bundle = defaultBundle,
+           let logo = bundle.image(forResource: "FinderRootMenuIcon")?.copy() as? NSImage {
+            logo.size = NSSize(width: size, height: size)
+            logo.isTemplate = false
+            return logo
+        }
+        let colors = defaultColors(for: slot)
+        return image(slot.defaultSymbolName, palette: [colors.0, colors.1], size: size)
+    }
+
+    static func image(for template: FileTemplate, size: CGFloat = 16) -> NSImage? {
+        if let custom = template.customMenuIcon,
+           let chosen = image(for: custom, size: size) {
+            return chosen
+        }
+        let colors = defaultColors(for: template)
+        let symbol = TemplateCatalog.defaultMenuSymbol(forSuffix: template.fileExtension)
+        return image(symbol, palette: [colors.0, colors.1], size: size)
+            ?? image("doc", palette: [colors.0, colors.1], size: size)
+    }
+
+    static func defaultColors(for slot: MenuIconSlot) -> (NSColor, NSColor) {
+        switch slot {
+        case .newFile, .customNewFile: (.systemMint, .systemTeal)
+        case .clipboardText: (.systemBlue, .systemCyan)
+        case .clipboardImage: (.systemPurple, .systemPink)
+        case .fileTools, .resourceTools: (.systemMint, .systemBlue)
+        case .moveHere: (.systemMint, .systemTeal)
+        case .move: (.systemTeal, .systemMint)
+        case .copyNames: (.systemBlue, .systemCyan)
+        case .copyPaths: (.systemIndigo, .systemBlue)
+        case .permanentDelete: (.systemOrange, .systemRed)
+        case .airDrop: (.systemPurple, .systemIndigo)
+        case .desktopAlias: (.systemBlue, .systemTeal)
+        case .convert: (.systemBlue, .systemTeal)
+        case .compress: (.systemOrange, .systemRed)
+        case .resize: (.systemIndigo, .systemBlue)
+        case .icons: (.systemPurple, .systemPink)
+        case .stitch: (.systemMint, .systemTeal)
+        case .ocr: (.systemGreen, .systemBlue)
+        case .removeMetadata: (.systemMint, .systemGreen)
+        case .openWith: (.systemMint, .systemTeal)
+        case .favoriteLocations: (.systemMint, .systemYellow)
+        }
+    }
+
+    static func defaultColors(for template: FileTemplate) -> (NSColor, NSColor) {
+        switch template.fileExtension.lowercased() {
+        case "md", "markdown", "docx": (.systemIndigo, .systemBlue)
+        case "csv", "xlsx", "sql": (.systemGreen, .systemTeal)
+        case "swift", "json", "html", "css", "sh", "yaml", "xml", "js", "ts", "py": (.systemPurple, .systemBlue)
+        default: (.systemBlue, .systemTeal)
+        }
     }
 
     static func applicationImage(at url: URL, size: CGFloat = 16) -> NSImage? {
         applicationIcons.image(at: url, size: size)
+    }
+
+    static func image(for customization: MenuIconCustomization, size: CGFloat = 16) -> NSImage? {
+        image(customization.symbolName,
+              palette: [color(customization.primaryHex), color(customization.secondaryHex)], size: size)
+    }
+
+    private static func color(_ hex: String) -> NSColor {
+        let digits = Array(hex.dropFirst().utf8)
+        func channel(_ offset: Int) -> CGFloat {
+            let value = String(decoding: digits[offset..<(offset + 2)], as: UTF8.self)
+            return CGFloat(Int(value, radix: 16) ?? 0) / 255
+        }
+        return NSColor(srgbRed: channel(0), green: channel(2), blue: channel(4), alpha: 1)
     }
 
     private static func image(_ symbol: String, palette: [NSColor], size: CGFloat = 16) -> NSImage? {

@@ -7,12 +7,18 @@ struct OpenWithPane: View {
     @EnvironmentObject private var model: PreferencesModel
 
     var body: some View {
-        OpenWithSettingsView(preferences: Binding(get: { model.preferences.openWith }, set: {
-            let previous = model.preferences.openWith
-            model.preferences.openWith = $0
-            if !model.save() { model.preferences.openWith = previous }
-        }), language: model.preferences.language, isChoosing: model.isChoosingOpenWithApp,
-           addApplication: model.addOpenWithApplications)
+        VStack(alignment: .leading, spacing: 12) {
+            PreferenceRow(title: model.text(.openWithApps)) {
+                MenuIconControl(slot: .openWith, customization: model.menuIconBinding(for: .openWith),
+                    language: model.preferences.language)
+            }.mintSurface()
+            OpenWithSettingsView(preferences: Binding(get: { model.preferences.openWith }, set: {
+                let previous = model.preferences.openWith
+                model.preferences.openWith = $0
+                if !model.save() { model.preferences.openWith = previous }
+            }), language: model.preferences.language, isChoosing: model.isChoosingOpenWithApp,
+               addApplication: model.addOpenWithApplications)
+        }
     }
 }
 

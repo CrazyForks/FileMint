@@ -42,6 +42,12 @@ targets:
       - App/FileMint
       - path: Resources/Sparkle-LICENSE.txt
         buildPhase: resources
+      - path: Resources/SFSymbolNames.txt
+        buildPhase: resources
+      - path: Resources/SFSymbolRestrictedNames.txt
+        buildPhase: resources
+      - path: Resources/SFSymbolCatalog-LICENSE.txt
+        buildPhase: resources
       - path: LICENSE
         buildPhase: resources
       - FinderSyncExtension/FileMintFinderSync/FinderIntegrationStatus.swift

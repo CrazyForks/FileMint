@@ -115,8 +115,10 @@ struct FileToolsPane: View {
 
     var body: some View {
         FileToolsSettingsView(preferences: $model.preferences.fileTools,
-                              language: model.preferences.language)
+                              language: model.preferences.language,
+                              menuIcons: $model.preferences.menuIcons)
             .onChange(of: model.preferences.fileTools) { _ in model.save() }
+            .onChange(of: model.preferences.menuIcons) { _ in model.save() }
     }
 }
 
@@ -127,6 +129,27 @@ struct CreationSettingsPane: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 26) {
                 SettingsSection(title: model.text(.quickCreation)) {
+                    PreferenceRow(title: model.text(.newFile),
+                        detail: model.preferences.language.resolved() == .chinese ? "仅在二级菜单模式显示" : "Shown in submenu mode") {
+                        MenuIconControl(slot: .newFile, customization: model.menuIconBinding(for: .newFile),
+                            language: model.preferences.language)
+                    }
+                    Divider()
+                    PreferenceRow(title: model.text(.customNewFile)) {
+                        MenuIconControl(slot: .customNewFile, customization: model.menuIconBinding(for: .customNewFile),
+                            language: model.preferences.language)
+                    }
+                    Divider()
+                    PreferenceRow(title: model.text(.newFileFromClipboard)) {
+                        MenuIconControl(slot: .clipboardText, customization: model.menuIconBinding(for: .clipboardText),
+                            language: model.preferences.language)
+                    }
+                    Divider()
+                    PreferenceRow(title: model.text(.pasteImageFile)) {
+                        MenuIconControl(slot: .clipboardImage, customization: model.menuIconBinding(for: .clipboardImage),
+                            language: model.preferences.language)
+                    }
+                    Divider()
                     PreferenceRow(title: model.text(.newFileMenuPosition), detail: model.text(.newFileMenuPositionHint)) {
                         Picker(model.text(.newFileMenuPosition), selection: Binding(
                             get: { model.preferences.newFileMenuPlacement },

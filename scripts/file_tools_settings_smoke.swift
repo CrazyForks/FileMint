@@ -44,6 +44,7 @@ private struct FixtureView: View {
     }()
     @State private var language = AppLanguage.chinese
     @State private var dark = false
+    @State private var menuIcons: [String: MenuIconCustomization] = [:]
 
     private func text(_ key: FileMintTextKey) -> String {
         FileMintStrings.text(key, language: language)
@@ -58,7 +59,7 @@ private struct FixtureView: View {
                 }.frame(width: 180)
                 Toggle("QA dark", isOn: $dark).toggleStyle(.checkbox)
                 Spacer()
-                NativeToolMenu(language: language).frame(width: 125, height: 24)
+                NativeToolMenu(language: language, menuIcons: menuIcons).frame(width: 125, height: 24)
             }.padding(10)
             Divider()
             VStack(alignment: .leading, spacing: 7) {
@@ -66,7 +67,7 @@ private struct FixtureView: View {
                 Text(text(.fileToolsHint)).font(.callout).foregroundStyle(.secondary)
             }.padding(28)
             Divider().padding(.horizontal, 28)
-            FileToolsSettingsView(preferences: $preferences, language: language).padding(28)
+            FileToolsSettingsView(preferences: $preferences, language: language, menuIcons: $menuIcons).padding(28)
         }
         // 840-point minimum app width minus its 208-point sidebar.
         .frame(width: 632, height: 600)
@@ -86,6 +87,7 @@ private struct FixtureView: View {
 
 private struct NativeToolMenu: NSViewRepresentable {
     let language: AppLanguage
+    let menuIcons: [String: MenuIconCustomization]
 
     func makeNSView(context: Context) -> NSPopUpButton {
         NSPopUpButton(frame: .zero, pullsDown: true)
@@ -99,17 +101,20 @@ private struct NativeToolMenu: NSViewRepresentable {
             for tool in FileTool.allCases {
                 let item = NSMenuItem(title: FileMintStrings.text(tool.title, language: language),
                                       action: nil, keyEquivalent: "")
-                item.image = FileToolAppearance.image(for: tool)
+                item.image = FileToolAppearance.image(for: tool,
+                    customization: menuIcons[tool.menuIconSlot.rawValue])
                 menu.addItem(item)
             }
             let item = NSMenuItem(title: FileMintStrings.text(.moveSelectedHere, language: language),
                                   action: nil, keyEquivalent: "")
-            item.image = FileToolAppearance.moveHereImage
+            item.image = FileToolAppearance.image(for: .moveHere,
+                customization: menuIcons[MenuIconSlot.moveHere.rawValue])
             menu.addItem(item)
         }
         addTools(to: menu)
         let root = NSMenuItem(title: "QA submenu", action: nil, keyEquivalent: "")
-        root.image = FileToolAppearance.toolsImage
+        root.image = FileToolAppearance.image(for: .fileTools,
+            customization: menuIcons[MenuIconSlot.fileTools.rawValue])
         let submenu = NSMenu()
         submenu.autoenablesItems = false
         addTools(to: submenu)

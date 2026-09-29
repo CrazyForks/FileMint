@@ -107,6 +107,9 @@ Part of the [FileMint SPEC](../SPEC.md). This file owns the behavior below; othe
 - The internal FileMintImages library uses only system Image I/O, Core Graphics
   and Vision. Link it into the main app, not the Finder extension; it is not an
   external package dependency. No WebP encoder or other image library is bundled.
+- The icon picker bundles an attributed text catalog of SF Symbol names in the
+  main app only. macOS supplies the glyph artwork at runtime; the Finder
+  extension reads saved names and colors without a catalog or new dependency.
 - Office template validation uses system zlib, Foundation XML and CryptoKit;
   no Office, ZIP or third-party package dependency is added.
 

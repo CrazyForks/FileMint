@@ -67,6 +67,11 @@ Part of the [FileMint SPEC](../SPEC.md). This file owns the behavior below; othe
 - Per-suffix default template IDs are saved independently of ordering. Missing
   old fields fall back deterministically without losing user templates or other
   preferences; invalid references are removed when settings are saved.
+- Menu icon overrides store only system symbol names and color values in the
+  existing preferences document. Missing or malformed icon preferences use the
+  established defaults without changing other settings. The app alone writes
+  them; Finder reads the cached settings and refreshes after a save. Unsupported
+  symbols render the default icon instead of an empty menu image.
 - Limit the persisted settings document to 32 MiB. A missing file initializes
   defaults; a present corrupt or oversized file leaves Finder scope empty and is
   preserved for explicit recovery instead of being overwritten during startup.

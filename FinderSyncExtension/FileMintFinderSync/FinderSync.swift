@@ -32,6 +32,10 @@ final class FinderSync: FIFinderSync {
         func text(_ key: FileMintTextKey) -> String {
             FileMintStrings.text(key, language: language)
         }
+        func menuIcon(_ slot: MenuIconSlot) -> NSImage? {
+            FileToolAppearance.image(for: slot, customization: preferences.menuIcons[slot.rawValue],
+                defaultBundle: Bundle(for: Self.self))
+        }
         let target = FIFinderSyncController.default().targetedURL()
         let isContainer = menuKind == .contextualMenuForContainer
         let targetIsDirectory = target.map {
@@ -43,12 +47,7 @@ final class FinderSync: FIFinderSync {
         ) else { return nil }
         let menu = NSMenu(title: "FileMint")
         let root = NSMenuItem(title: text(.newFile), action: nil, keyEquivalent: "")
-        if let source = Bundle(for: Self.self).image(forResource: "FinderRootMenuIcon"),
-           let logo = source.copy() as? NSImage {
-            logo.size = NSSize(width: 16, height: 16)
-            logo.isTemplate = false
-            root.image = logo
-        }
+        root.image = menuIcon(.newFile)
         let submenu = NSMenu(title: text(.newFile))
         let creationMenu = preferences.newFileMenuPlacement == .submenu ? submenu : menu
         let custom = NSMenuItem(title: text(.customNewFile), action: #selector(showCustomFile(_:)), keyEquivalent: "")
@@ -57,18 +56,21 @@ final class FinderSync: FIFinderSync {
             FileMenuAction(directory: directory, templateID: $0.id)
         })
         custom.tag = tags[0]
-        if preferences.newFileMenuPlacement == .main { custom.image = root.image }
+        custom.image = menuIcon(.customNewFile)
         creationMenu.addItem(custom)
         let pasteText = NSMenuItem(title: text(.newFileFromClipboard), action: #selector(pasteTextFile(_:)), keyEquivalent: "")
+        pasteText.image = menuIcon(.clipboardText)
         pasteText.tag = actions.register([FileMenuAction(directory: directory, templateID: nil)])[0]
         creationMenu.addItem(pasteText)
         let pasteImage = NSMenuItem(title: text(.pasteImageFile), action: #selector(pasteImageFile(_:)), keyEquivalent: "")
+        pasteImage.image = menuIcon(.clipboardImage)
         pasteImage.tag = actions.register([FileMenuAction(directory: directory, templateID: nil)])[0]
         creationMenu.addItem(pasteImage)
         if !templates.isEmpty { creationMenu.addItem(.separator()) }
         for (index, template) in templates.enumerated() {
             let title = "\(FileMintStrings.templateDisplayName(for: template, language: language)) (.\(template.fileExtension))"
             let item = NSMenuItem(title: title, action: #selector(createFile(_:)), keyEquivalent: "")
+            item.image = FileToolAppearance.image(for: template)
             item.tag = tags[index + 1]
             creationMenu.addItem(item)
         }
@@ -91,7 +93,7 @@ final class FinderSync: FIFinderSync {
             let title = pending.items.count == 1 ? text(.moveSelectedHere)
                 : String(format: text(.moveSelectedHereCount), pending.items.count)
             let item = NSMenuItem(title: title, action: #selector(moveSelectedHere(_:)), keyEquivalent: "")
-            item.image = FileToolAppearance.moveHereImage
+            item.image = menuIcon(.moveHere)
             item.tag = actions.register([FileMenuAction(directory: destination, moveBatchID: pending.id)])[0]
             // Root-level entry; Finder owns placement relative to system rows.
             moveHereItem = item
@@ -112,14 +114,14 @@ final class FinderSync: FIFinderSync {
         })
         for (index, tool) in tools.enumerated() {
             let item = NSMenuItem(title: text(tool.title), action: #selector(performFileTool(_:)), keyEquivalent: "")
-            item.image = FileToolAppearance.image(for: tool)
+            item.image = menuIcon(tool.menuIconSlot)
             item.tag = toolTags[index]
             if layout.main.contains(tool) { menu.addItem(item) }
             else { toolsMenu.addItem(item) }
         }
         if layout.showsSubmenu {
             let toolsRoot = NSMenuItem(title: text(.fileTools), action: nil, keyEquivalent: "")
-            toolsRoot.image = FileToolAppearance.toolsImage
+            toolsRoot.image = menuIcon(.fileTools)
             toolsRoot.submenu = toolsMenu
             menu.addItem(toolsRoot)
         }
@@ -133,11 +135,11 @@ final class FinderSync: FIFinderSync {
             for (index, tool) in resourceTools.enumerated() {
                 let item = NSMenuItem(title: tool.title(language), action: #selector(performResourceTool(_:)), keyEquivalent: "")
                 item.tag = resourceTags[index]
-                item.image = FileToolAppearance.image(for: tool)
+                item.image = menuIcon(tool.menuIconSlot)
                 resourceMenu.addItem(item)
             }
             let item = NSMenuItem(title: text(.resourceTools), action: nil, keyEquivalent: "")
-            item.image = FileToolAppearance.resourceToolsImage
+            item.image = menuIcon(.resourceTools)
             item.submenu = resourceMenu
             menu.addItem(item)
         }
@@ -164,7 +166,7 @@ final class FinderSync: FIFinderSync {
         }
         if appLayout.showsSubmenu {
             let item = NSMenuItem(title: text(.openWithApps), action: nil, keyEquivalent: "")
-            item.image = FileToolAppearance.openWithImage
+            item.image = menuIcon(.openWith)
             item.submenu = appMenu
             menu.addItem(item)
         }
@@ -199,7 +201,7 @@ final class FinderSync: FIFinderSync {
                 favoriteAction: .search)])[0]
             submenu.addItem(search)
             let root = NSMenuItem(title: FavoriteText.title.text(language), action: nil, keyEquivalent: "")
-            root.image = FileToolAppearance.favoriteImage
+            root.image = menuIcon(.favoriteLocations)
             root.submenu = submenu
             menu.addItem(root)
         }

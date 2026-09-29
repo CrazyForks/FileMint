@@ -5,7 +5,19 @@ import SwiftUI
 struct FileToolsSettingsView: View {
     @Binding var preferences: FileToolsPreferences
     let language: AppLanguage
+    @Binding var menuIcons: [String: MenuIconCustomization]
     private func text(_ key: FileMintTextKey) -> String { FileMintStrings.text(key, language: language) }
+
+    init(preferences: Binding<FileToolsPreferences>, language: AppLanguage,
+         menuIcons: Binding<[String: MenuIconCustomization]> = .constant([:])) {
+        self._preferences = preferences
+        self.language = language
+        self._menuIcons = menuIcons
+    }
+
+    private func iconBinding(_ slot: MenuIconSlot) -> Binding<MenuIconCustomization?> {
+        Binding(get: { menuIcons[slot.rawValue] }, set: { menuIcons[slot.rawValue] = $0 })
+    }
 
     var body: some View {
         ScrollView {
@@ -14,6 +26,10 @@ struct FileToolsSettingsView: View {
                     PreferenceRow(title: text(.enableFileTools), detail: text(.fileToolsOffHint)) {
                         Toggle(text(.enableFileTools), isOn: $preferences.isEnabled)
                             .labelsHidden().accessibilityIdentifier("fileTools.enabled")
+                    }
+                    Divider()
+                    PreferenceRow(title: text(.fileTools)) {
+                        MenuIconControl(slot: .fileTools, customization: iconBinding(.fileTools), language: language)
                     }
                 }
                 VStack(alignment: .leading, spacing: 12) {
@@ -36,7 +52,8 @@ struct FileToolsSettingsView: View {
         let enabled = preferences.isToolEnabled(tool)
         return VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 14) {
-                if let image = FileToolAppearance.image(for: tool, size: 18) {
+                if let image = FileToolAppearance.image(for: tool, size: 18,
+                    customization: menuIcons[tool.menuIconSlot.rawValue]) {
                     Image(nsImage: image).resizable().frame(width: 18, height: 18).accessibilityHidden(true)
                         .saturation(enabled ? 1 : 0).opacity(enabled ? 1 : 0.5)
                 }
@@ -60,6 +77,9 @@ struct FileToolsSettingsView: View {
                     positionPicker(selection: $preferences.moveHereInMainMenu, label: text(.moveHereMenuPosition))
                         .accessibilityIdentifier("fileTools.moveHere.mainMenu")
                 }.font(.system(size: 11)).padding(.leading, 32).disabled(!enabled)
+                PreferenceRow(title: text(.moveSelectedHere)) {
+                    MenuIconControl(slot: .moveHere, customization: iconBinding(.moveHere), language: language)
+                }.padding(.leading, 32).disabled(!enabled)
             } else if tool == .permanentDelete {
                 PreferenceRow(title: text(.deleteConfirmation)) {
                     Picker(text(.deleteConfirmation), selection: $preferences.deleteConfirmation) {
@@ -69,6 +89,9 @@ struct FileToolsSettingsView: View {
                         .accessibilityIdentifier("fileTools.deleteConfirmation")
                 }.padding(.leading, 32).disabled(!enabled)
             }
+            PreferenceRow(title: MenuIconControl.rowTitle(language)) {
+                MenuIconControl(slot: tool.menuIconSlot, customization: iconBinding(tool.menuIconSlot), language: language)
+            }.padding(.leading, 32).disabled(!enabled)
         }
     }
 

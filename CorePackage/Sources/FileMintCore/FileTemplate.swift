@@ -10,6 +10,7 @@ public struct FileTemplate: Codable, Equatable, Identifiable, Sendable {
     public var content: String
     public var isEnabled: Bool
     public var rank: Int
+    public var customMenuIcon: MenuIconCustomization? = nil
 
     public init(
         id: String,
@@ -32,7 +33,7 @@ public struct FileTemplate: Codable, Equatable, Identifiable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, displayName, suggestedFileName, fileExtension, document, group, content, isEnabled, rank
+        case id, displayName, suggestedFileName, fileExtension, document, group, content, isEnabled, rank, customMenuIcon
     }
 
     public init(from decoder: Decoder) throws {
@@ -52,6 +53,7 @@ public struct FileTemplate: Codable, Equatable, Identifiable, Sendable {
         content = try values.decode(String.self, forKey: .content)
         isEnabled = try values.decode(Bool.self, forKey: .isEnabled)
         rank = try values.decode(Int.self, forKey: .rank)
+        customMenuIcon = try? values.decode(MenuIconCustomization.self, forKey: .customMenuIcon)
     }
 
     private static func legacyExtension(_ name: String) -> String {
@@ -211,10 +213,12 @@ extension TemplateCatalog {
         let requestedName = (suggestedFileName ?? existing?.suggestedFileName)?.trimmingCharacters(in: .whitespacesAndNewlines)
         let filename = FilenamePolicy.fileName(requestedName?.isEmpty == false ? requestedName! : "Untitled.\(suffix)",
             applyingFileExtension: suffix, replacingFileExtension: existing?.fileExtension)!
-        return FileTemplate(id: id ?? "custom-\(UUID().uuidString)", displayName: name,
+        var template = FileTemplate(id: id ?? "custom-\(UUID().uuidString)", displayName: name,
                             suggestedFileName: filename, group: existing?.group ?? "Custom", content: content,
                             isEnabled: existing?.isEnabled ?? true,
                             rank: try existing?.rank ?? nextRank(in: templates), fileExtension: suffix)
+        template.customMenuIcon = existing?.customMenuIcon
+        return template
     }
 
     public static func defaultTemplate(forExtension suffix: String, in templates: [FileTemplate],
