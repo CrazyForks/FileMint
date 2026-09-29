@@ -7,6 +7,11 @@ description: FileMint's local-first privacy promise.
 
 FileMint creates files, stores document templates and processes images locally. It does not require an account or collect usage analytics.
 
+## Data boundaries for the 0.6.2 features
+
+- **New File from Clipboard** reads plain text once only when you explicitly choose the action. It does not monitor the clipboard or save a file automatically.
+- **Open the current folder with an app** passes only Finder's captured, authorized directory to a local app you configured. The terminal controls what it does afterward.
+
 ## Data boundaries for the 0.6.1 features
 
 These notes describe features included in the FileMint 0.6.1 stable release:
@@ -19,9 +24,9 @@ These notes describe features included in the FileMint 0.6.1 stable release:
 
 - Filenames, paths and content are never uploaded.
 - It does not crawl folders, badge files or enumerate files in the background.
-- It does not monitor the clipboard. Text is read when pasted, and an image is read when you choose Paste Image as File. Copying names, paths, editor text or OCR results requires your explicit action. Previewing an image does not save a file.
+- It does not monitor the clipboard. Text is read when pasted or when you choose New File from Clipboard; an image is read when you choose Paste Image as File. Copying names, paths, editor text or OCR results requires your explicit action. Previewing an image does not save a file.
 - Importing a Word or Excel template reads only the document you choose and stores an independent copy in the app’s private directory. Templates are not uploaded, and later changes to the original are not tracked.
-- Open with App passes selected items to a local app you configured without changing default file associations. The target app is responsible for what it does next.
+- Open with App passes selected items or the current directory to a local app you configured without changing default file associations. The target app is responsible for what it does next.
 - File & Folder Tools acts only on items you explicitly select inside an authorized scope. It does not read file contents, crawl folders, or upload names, paths or pending-move state. Delete Permanently acts only on captured selected items and does not log paths or content. AirDrop hands selected file URLs only to macOS's system sharing service, which handles recipient selection.
 - Resource Tools acts only on images you explicitly choose. Conversion, compression, resizing, stitching and OCR run locally; originals stay intact, and images, text results and processing history are not uploaded or retained.
 

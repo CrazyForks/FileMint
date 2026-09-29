@@ -6,9 +6,15 @@ tools do not require a network connection; AirDrop is performed by macOS's syste
 sharing service only when you explicitly choose it.
 
 - File names, paths and contents are not uploaded or logged.
-- The clipboard is read only when you invoke Paste or a standard paste shortcut.
-  Copy Names and Copy Paths write to it only after you explicitly choose either
-  Finder menu action. It is never watched or saved as a clipboard history.
+- The clipboard is read only when you invoke Paste, a standard paste shortcut,
+  New File from Clipboard or Paste Image as File. The text creation action reads
+  one plain-text item when explicitly chosen and uses it to prefill a draft;
+  only Create writes it to a file. Copy Names and Copy Paths write to the
+  clipboard only after you explicitly choose either Finder menu action. The
+  clipboard is never watched or saved as a history.
+- Open with App passes selected items or Finder's captured, authorized directory
+  to a local app you configured. It does not change default file associations;
+  the receiving app controls what it does afterward.
 - Resource Tools reads only explicitly selected local images. Conversion,
   compression, resizing, icons, stitching and Vision text recognition run on the
   Mac without uploading images or recognized text. Previews and OCR results are

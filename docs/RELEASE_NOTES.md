@@ -1,3 +1,37 @@
+# FileMint 0.6.2
+
+## 新功能
+
+- **从剪贴板新建**：在 Finder、主应用或菜单栏主动选择后，将单项纯文本预填到新建文件面板。可先修改文件名、格式、目录和正文；只有点按“创建”才会写入文件。
+- **在当前目录打开 App**：Finder 的“使用 App 打开”现在也支持当前文件夹或单个普通文件夹。已配置的终端可在设置中选择“跟随终端”“新标签页”或“新窗口”；文件选择仍沿用原有打开方式。
+
+## 改进
+
+- 改进常用文件（夹）的保存、搜索与定位；正在创建文件或整理收藏时，退出和更新重启会等待操作完成。
+- 调整“使用 App 打开”设置布局和窗口尺寸，在中英文及浅色、深色界面中保持操作项可见。
+
+## 系统要求与升级
+
+0.6.2 正式安装包面向运行 macOS 13 或更新版本的 M 系列 Mac，不含 Intel 代码。运行 0.6.1 的 M 系列用户可通过“关于 → 检查更新 → 更新并重启”升级。已发布旧版安装包的兼容范围不变。
+
+0.5.7/0.5.8 用户仍需先手动安装 0.5.9 或更新版本一次，修复旧版自身无法修复的更新器签名权限问题。
+
+## New features
+
+- **New File from Clipboard**: Explicitly choose the action in Finder, the app or the menu bar to prefill a creation draft from one plain-text clipboard item. Edit the name, format, destination and text before saving; only Create writes a file.
+- **Open the current folder with an app**: Finder's Open with App action now accepts the current folder or one ordinary selected folder. Configured terminals offer Follow App, New Tab and New Window choices in settings. File selections retain their existing opening behavior.
+
+## Improvements
+
+- Improved Favorite Locations saving, search and locate behavior. Quit and update restart wait for active creation or favorite edits to finish.
+- Refined the Open with App settings layout and window sizing across Chinese, English, light and dark appearances.
+
+## System requirements and upgrading
+
+The 0.6.2 stable installer targets M-series Macs running macOS 13 or later and contains no Intel code. M-series users on 0.6.1 can upgrade through **About → Check for Updates → Update and Restart**. Previously published installers keep their original compatibility.
+
+Versions 0.5.7/0.5.8 still require one manual installation of 0.5.9 or later to fix updater signing permissions that those versions cannot repair themselves.
+
 # FileMint 0.6.1
 
 ## 新功能

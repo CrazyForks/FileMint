@@ -1,7 +1,7 @@
 # 安装 / Installation
 
-0.6.0 正式安装包仅支持 macOS 13+ 的 M 系列 Mac，不含 Intel 代码。Intel Mac
-无法安装或更新至 0.6.0；已发布的 0.5.10 及更早版本仍保留原有兼容范围。请从
+0.6.2 正式安装包仅支持 macOS 13+ 的 M 系列 Mac，不含 Intel 代码。Intel Mac
+无法安装或更新至 0.6.2；已发布的 0.5.10 及更早版本仍保留原有兼容范围。请从
 [FileMintApp/FileMint Releases](https://github.com/FileMintApp/FileMint/releases/latest)
 下载 DMG，而不是第三方重新打包的文件。
 
@@ -85,6 +85,10 @@ FileMint 会用书签记住它，而不是每次创建都重新选择。下方�
 旧目录权限可能需要重新授权。
 
 ## English
+
+The 0.6.2 stable installer requires an M-series Mac running macOS 13 or later
+and contains no Intel code. Intel Macs cannot install or update to 0.6.2;
+previously published installers retain their original compatibility.
 
 Drag FileMint from the DMG into Applications, eject the FileMint installer volume,
 then open FileMint from Applications. Stable releases from 0.5.9 onward are Developer ID signed,

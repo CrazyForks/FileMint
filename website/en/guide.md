@@ -36,6 +36,10 @@ A complete filename determines the suffix; choosing a different format updates t
 
 **Keyboard:** Use Tab / Shift-Tab to move between controls, ⌘↩ to create, and Esc to cancel. Return inserts a newline in the content editor. The Paste button reads clipboard text only when you click it.
 
+### Create a text file from the clipboard
+
+Copy one plain-text item, then choose **New File from Clipboard…** in Finder's **New File** menu, the app or the menu bar. FileMint reads the text once and prefills the creation panel. You can change the name, format, destination and text. Only **Create** writes a file; cancelling saves nothing. File references, multiple clipboard items and empty content are not created as text files.
+
 ## Save reusable templates
 
 Open **Templates & Types**, enable and reorder the formats you use. Click **New Text Template…** to add a template name, default filename and starter content. You can keep several templates for one suffix and choose a default. Select the template later from Finder or the creation panel.
@@ -54,15 +58,15 @@ To reuse an existing Word or Excel document, click **Import Document Template…
 
 FileMint reads the image only when you choose this action. Cancelling creates nothing. This action saves PNG and numbers an existing filename automatically.
 
-## Open selected items with your apps
+## Open selected items or the current folder with your apps
 
-Open **Extensions → Open with App**, click **Add App**, choose a local application, and place it in Finder's main menu or the **Open with App** submenu. Then select a file or folder in a configured Finder location, right-click it and choose the app.
+Open **Extensions → Open with App**, click **Add App**, choose a local application, and place it in Finder's main menu or the **Open with App** submenu. Then select an item or right-click a folder background in a configured Finder location and choose the app. One ordinary selected folder is also passed as a directory.
 
 ![Open with App settings showing configured applications and individual menu positions](/images/open-with-en.jpg)
 
 <p class="guide-caption">These applications are an example. A new installation starts with an empty list.</p>
 
-This does not change macOS default file associations. The chosen app decides which file types it can open. If an app is missing from the menu, check that it is still installed at its configured location and that the selection is within the menu scope.
+Supported terminals offer **Follow App**, **New Tab** and **New Window** in the same settings row. File selections retain their existing opening behavior. Actual window behavior depends on the installed terminal and its macOS service. This does not change macOS default file associations. If an app is missing from the menu, check that it is still installed at its configured location and that the target folder is within the menu scope.
 
 ## Enable File & Folder Tools when needed
 
@@ -130,6 +134,6 @@ Under **General → Appearance**, choose Follow System, Light or Dark, plus Engl
 
 **The menu appears, but saving asks for access:** Follow FileMint's prompt and select the working folder in the system folder picker. Full Disk Access and FileMint's saved folder authorization are different. The Full Disk Access guide staying visible does not mean its system switch is off.
 
-**An action is missing:** Right-click in the right place: a folder background for creation, selected items for File & Folder Tools and Open with App, and supported selected images for Resource Tools. Then check the module switch, action switch and main-menu/submenu placement.
+**An action is missing:** Right-click in the right place: a folder background for creation, selected items for File & Folder Tools, a selected item or folder background for Open with App, and supported selected images for Resource Tools. Then check the module switch, action switch and main-menu/submenu placement.
 
 Still stuck? Open a [GitHub issue](https://github.com/FileMintApp/FileMint/issues) with your macOS and FileMint versions, the entry point you used, and the message you saw. Please leave out private file contents and full paths.

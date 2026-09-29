@@ -10,21 +10,22 @@ Creating a file should not require opening an editor, choosing Save As and findi
 FileMint puts the action back in Finder: **right-click, choose a type and your file is there.**
 When you need a name, starter content, image processing or selected-item tools, the same native workflow continues.
 
-## What's new in 0.6.0
+## What's new in 0.6.2
 
-Finder menus can now reorder **Open with App** entries and place **New File** in the main menu or a submenu. File moves and deletions recheck their sources and destinations, and the Full Disk Access shortcut opens the current System Settings page. Version 0.6.0 supports M-series Macs on macOS 13+; Intel users should remain on 0.5.10.
+Explicitly choose **New File from Clipboard** to prefill a creation draft with plain text. Finder's **Open with App** also accepts the current folder, and configured terminals offer directory opening choices. The stable installer supports M-series Macs on macOS 13+; Intel users should stay on a compatible earlier release.
 
-[0.6.0 release notes](https://github.com/FileMintApp/FileMint/releases/tag/v0.6.0)
+[0.6.2 release notes](https://github.com/FileMintApp/FileMint/releases/tag/v0.6.2)
 
 ## Recent features
 
-- **Open with App**: Add your go-to apps to Finder and open selected files or folders with them.
+- **New File from Clipboard**: Explicitly read one plain-text item, then review the name, destination and content before creating a file.
+- **Open with App**: Add your go-to apps to Finder and open selected items or the current folder with them.
 - **Paste Image as File**: Preview and name a copied screenshot or image, then save it as PNG.
 - **Multiple templates per format**: Keep separate content and filenames for one format, with a configurable default template.
 - **Word / Excel templates**: Import `.docx` or `.xlsx` and create independent copies with the original formatting and content.
 - **Themes and settings**: General now offers Follow System, Light and Dark, with consistent control alignment and interaction styles.
 
-[Full release notes](https://github.com/FileMintApp/FileMint/releases/tag/v0.6.0)
+[Full release notes](https://github.com/FileMintApp/FileMint/releases/tag/v0.6.2)
 
 ## Why FileMint
 
@@ -128,7 +129,7 @@ Read the complete [privacy policy](PRIVACY.md).
 
 ## Install
 
-The 0.6.0 stable installer supports **M-series Macs on macOS 13+** only. Intel Macs cannot install or update to this version. Published installers through 0.5.10 keep their original compatibility.
+The 0.6.2 stable installer supports **M-series Macs on macOS 13+** only. Intel Macs cannot install or update to this version. Published installers through 0.5.10 keep their original compatibility.
 
 **Stable installers from 0.5.9 onward are Developer ID signed, Apple notarized and stapled.** First use still follows macOS prompts for Finder enablement and folder authorization.
 
@@ -160,7 +161,6 @@ These are unfinished directions only; the list changes with real use and feedbac
 
 ### Creation and next steps
 
-- [ ] **Create from the clipboard** — Bring copied text into the creation panel, name it and save it as a file.
 - [ ] **Open after creation** — Continue working in the default app or an editor you choose.
 
 </div>
@@ -169,7 +169,6 @@ These are unfinished directions only; the list changes with real use and feedbac
 ### Folders and tool integrations
 
 - [ ] **Project folder templates** — Create a familiar folder structure and starter files in one action.
-- [ ] **Open tools in the current folder** — Continue in your preferred terminal or editor at the current location.
 - [ ] **Shortcuts and launcher integrations** — Open a prefilled creation panel from Shortcuts, Raycast or Alfred.
 
 </div>
