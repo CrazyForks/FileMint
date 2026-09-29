@@ -61,12 +61,17 @@ Part of the [FileMint SPEC](../SPEC.md). This file owns the behavior below; othe
   its exact bytes and waits for the published-asset verification job. The owner
   confirmed public update acceptance across three recent small releases; routine
   releases therefore do not require a temporary app launch/UI review, website
-  screenshot capture or repeated old-to-new installation acceptance. Run isolated
-  update acceptance when changing the updater, signing, packaging, installer
-  permissions or appcast behavior, investigating an update regression, or when
-  explicitly requested. Exact remote asset readback remains required on every
-  publication. Publication can resume from the verified local manifest after a
-  remote failure without rebuilding or replacing release assets. A notarization
+  screenshot capture or repeated old-to-new installation acceptance. Omitting
+  the standalone UpgradeQA fixture changes none of the release gates: every
+  stable version still requires the clean tagged source, `release-local` checks,
+  accepted notarization, stapling, signed appcast, `publish-local` remote asset
+  readback and published-release verification. Changes to updater, signing,
+  packaging, installer permissions or appcast still receive applicable checks
+  from [HARNESS](../HARNESS.md); actual installed-update behavior needs signed
+  old/new runtime evidence when that behavior is under test. UpgradeQA is an
+  optional, case-specific diagnostic, not a default release step. Publication
+  can resume from the verified local manifest after a remote failure without
+  rebuilding or replacing release assets. A notarization
   timeout retains the submitted DMG, its hash and Apple submission ID so the same
   submission can be resumed without uploading again. Preparation requires a
   reviewed commit and tag; development commands must not publish implicitly.

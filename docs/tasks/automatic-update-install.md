@@ -1,7 +1,7 @@
 # Task: Automatic update installation
 
 Status: complete
-Next action: Follow the current [Distribution procedure](../DISTRIBUTION.md); repeat isolated update acceptance only when its stated triggers apply.
+Next action: Follow the current [Distribution procedure](../DISTRIBUTION.md); UpgradeQA is an optional, case-specific installer diagnostic.
 
 ## Objective and scope
 

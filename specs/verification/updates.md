@@ -20,11 +20,13 @@ and installation handoff evidence in `docs/ACCEPTANCE.md`.
 
 ## Sparkle installation checks
 
-Routine releases do not repeat isolated production-update acceptance. The owner
-confirmed public update acceptance across three recent small releases. Use the
-checks below when changing the updater, signing, packaging, installer permissions
-or appcast behavior, when investigating an update regression, or when explicitly
-requested. Exact remote release-asset readback remains required for every release.
+Routine releases do not repeat old-to-new installation acceptance. UpgradeQA is
+an optional installer diagnostic, not a standard release step. Omitting that
+fixture does not remove `make release-local`, `make publish-local` or checks
+selected by [HARNESS](../HARNESS.md) for updater, signing, packaging, installer
+permissions or appcast changes. When actual installation behavior needs proof,
+use signed old/new FileMint runtime evidence; UpgradeQA's minimal host cannot
+stand in for it. Exact remote asset readback is required for every publication.
 
 Manual signing resolves entitlement variables before codesign. Both signing and
 bundle verification read the actual embedded DER/XML entitlements through Security
@@ -41,6 +43,10 @@ installation path, with both launch PIDs recorded in that fixture's private
 container (also displayed in the QA window). It uses a minimal QA driver and an inert extension bundle;
 it proves sandbox installer replacement/relaunch, not FileMint's custom driver,
 public-feed restrictions, installed Finder callbacks or clean-Mac permissions.
+On macOS 27.2, the default ad-hoc fixture was rejected because its process and
+embedded Sparkle framework had different Team IDs. A diagnostic run there needs
+the existing local Developer ID identity; a failed fixture launch is not evidence
+of a defect in the published FileMint app.
 
 `UpdateInstallationTests` binds the selected release version, URL and size,
 rejects informational/delta updates and covers restart protection. The Python
@@ -50,9 +56,11 @@ After the app build, `make verify-sparkle-driver` compiles the production driver
 against the real Sparkle framework with test UI sinks. It exercises callbacks,
 Objective-C delegate selectors, cancellation, progress, restart deferral and
 errors without starting network requests or installing anything. It does not
-replace the signed sandbox installation acceptance below.
+prove installer replacement or relaunch on its own.
 
-For targeted release acceptance, use two signed sandbox builds in an isolated installation:
+When a signed old-to-new native update check is selected for changed behavior,
+a regression or an explicit request, use two sandbox builds in an isolated
+installation:
 
 1. Confirm automatic discovery never downloads or opens windows; disabling it
    cancels only discovery. Manual checks remain available.

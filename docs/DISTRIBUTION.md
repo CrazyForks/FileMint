@@ -54,9 +54,13 @@ The two stages separate local artifact preparation from public upload and
 remote readback. The owner confirmed that the public update path was validated
 across three recent small releases, so routine releases do not repeat temporary
 app installation, launch/UI review, website screenshot capture or old-to-new
-installation acceptance. Repeat isolated update acceptance when changing the
-updater, signing, packaging, installer permissions or appcast behavior, when
-investigating an update regression, or when explicitly requested.
+installation acceptance. The standalone UpgradeQA fixture is omitted from the
+standard workflow; this does not skip any step of `make release-local` or
+`make publish-local`. When updater, signing, packaging, installer permissions or
+appcast behavior changes, select the applicable checks from
+[HARNESS](../specs/HARNESS.md), including signed old-to-new runtime evidence when
+installation behavior is under test. UpgradeQA remains a case-specific installer
+diagnostic, not an automatic substitute for that evidence.
 
 ### 1. Prepare the source
 
@@ -102,13 +106,14 @@ hash before replacing the submitted file, so interruptions preserve a recoverabl
 stage. A matching existing appcast is verified and reused. If Apple rejects the submission or any
 other check fails, stop and diagnose before making a new candidate.
 
-No separate temporary app launch, UI review or website screenshot is required
-for a routine release. `make release-local` checks the signed, stapled artifact,
-mounted app, entitlements, architecture, checksum and appcast. Record those
-results against the release commit and final DMG SHA-256. Run the signed
-sandbox two-version Sparkle installation acceptance in
-[Update verification](../specs/verification/updates.md#sparkle-installation-checks)
-only under the conditions above. If performed, report installed Finder,
+No separate UpgradeQA run is required by the standard release procedure.
+`make release-local` still runs all offline tests and production Sparkle-driver
+checks, then validates the signed, notarized and stapled artifact, mounted app,
+entitlements, architecture, checksum and appcast. Record those results against
+the release commit and final DMG SHA-256. For changes that need native update
+evidence, follow the affected checks in
+[Update verification](../specs/verification/updates.md#sparkle-installation-checks);
+the UpgradeQA fixture is only an optional diagnostic there. Report installed Finder,
 minimum-supported-macOS and managed-device evidence separately when unavailable.
 
 ### 3. Publish and read back
@@ -128,13 +133,14 @@ local source manifest or Apple credentials. If the remote step fails, keep the
 local manifest and rerun `make publish-local`; existing assets are only checked,
 never replaced. A mismatched remote asset requires a new version and investigation.
 
-Routine releases do not repeat an actual installed update from an older version.
-Run that check when updater, signing, packaging, installer permissions or appcast
-behavior changes, when investigating a reported update failure, or when explicitly
-requested. `make publish-local` remains required: it downloads and compares the
-published DMG, checksum and appcast byte for byte, then waits for GitHub's
-published-release verification. Record local artifact results and remote readback;
-record native update results when that targeted acceptance is run.
+Routine publication does not repeat an old-to-new installed update. For changes
+to updater, signing, packaging, installer permissions or appcast behavior, apply
+the relevant HARNESS and update-verification checks; investigate reported
+failures with tests targeted to the failure. UpgradeQA is not required for any
+of these cases. `make publish-local` remains mandatory: it downloads and compares
+the published DMG, checksum and appcast byte for byte, then waits for GitHub's
+published-release verification. Record local artifact results and remote
+readback; record native update results when targeted acceptance is performed.
 
 Release evidence should include the local notarization result, downloaded asset
 checksum and published-release verification job. Include native runtime results
