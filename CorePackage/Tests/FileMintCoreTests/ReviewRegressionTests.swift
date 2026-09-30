@@ -42,6 +42,62 @@ struct ReviewRegressionTests {
         }
     }
 
+    @Test("permission-blocked quick tickets reach authorization without granting write scope")
+    func quickTicketAuthorization() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("quick-access-\(UUID())")
+        let scope = root.appendingPathComponent("scope")
+        let parent = scope.appendingPathComponent("blocked")
+        let directory = parent.appendingPathComponent("target")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { chmod(parent.path, 0o700); try? FileManager.default.removeItem(at: root) }
+        let store = QuickCreationTicketStore(directory: root.appendingPathComponent("requests"))
+        var preferences = FileMintPreferences.default
+        preferences.monitoredFolderURLs = [scope]
+        let now = Date()
+        let routes = try [
+            store.enqueue(directory: directory, templateID: "plain-text", now: now),
+            store.enqueueClipboardText(directory: directory, now: now),
+            store.enqueueClipboardImage(directory: directory, now: now)
+        ]
+        #expect(chmod(parent.path, 0) == 0)
+        #expect(FolderScope.directoryAccess(directory, in: [scope]) == .requiresAuthorization)
+        #expect(!FolderScope.containsResolvedDirectory(directory, in: [scope]))
+        for route in routes {
+            let ticket = try #require(try store.consume(route, preferences: preferences, now: now))
+            #expect(ticket.directory == directory)
+            #expect(try store.consume(route, preferences: preferences, now: now) == nil)
+        }
+        #expect(chmod(parent.path, 0o700) == 0)
+        #expect(FolderScope.directoryAccess(directory, in: [scope]) == .allowed)
+        #expect(try FileManager.default.contentsOfDirectory(atPath: directory.path).isEmpty)
+        #expect(FolderScope.directoryAccess(root, in: [scope]) == .outsideScope)
+    }
+
+    @Test("quick authorization must still reject a symlink escape after access is restored")
+    func quickTicketScopeAfterAuthorization() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("quick-scope-\(UUID())")
+        let scope = root.appendingPathComponent("scope")
+        let parent = scope.appendingPathComponent("blocked")
+        let directory = parent.appendingPathComponent("target")
+        let outside = root.appendingPathComponent("outside")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: outside, withIntermediateDirectories: true)
+        defer { chmod(parent.path, 0o700); try? FileManager.default.removeItem(at: root) }
+        var preferences = FileMintPreferences.default
+        preferences.monitoredFolderURLs = [scope]
+        let store = QuickCreationTicketStore(directory: root.appendingPathComponent("requests"))
+        let now = Date()
+        let route = try store.enqueue(directory: directory, templateID: "plain-text", now: now)
+        #expect(chmod(parent.path, 0) == 0)
+        let ticket = try #require(try store.consume(route, preferences: preferences, now: now))
+        #expect(chmod(parent.path, 0o700) == 0)
+        try FileManager.default.removeItem(at: directory)
+        try FileManager.default.createSymbolicLink(at: directory, withDestinationURL: outside)
+        #expect(FolderScope.directoryAccess(ticket.directory, in: preferences.monitoredFolderURLs) == .outsideScope)
+        #expect(!FolderScope.containsResolvedDirectory(ticket.directory, in: preferences.monitoredFolderURLs))
+        #expect(try FileManager.default.contentsOfDirectory(atPath: outside.path).isEmpty)
+    }
+
     @Test("extreme imported ranks preserve templates and order without arithmetic traps")
     func importedRanks() throws {
         let types = [

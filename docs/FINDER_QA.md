@@ -109,6 +109,9 @@ Its app automatically exercises all seven production panels in Chinese/light and
 English/dark and processes only its synthetic images. Inspect visible windows
 with native screenshots; AppKit view-cache renders omit SwiftUI drawing layers.
 It neither loads owner preferences nor proves installed Finder or sandbox grants.
+The fixture also cancels an in-flight preview and reuses the same production
+controller for automatic metadata removal. Launch it with
+`FILEMINT_RESOURCE_REGRESSION_ONLY=1` to run just this bounded lifecycle regression.
 
 - Use only a disposable image folder. Old preferences leave Resource Tools off;
   toggling off/on preserves child choices and never changes file-tool settings.

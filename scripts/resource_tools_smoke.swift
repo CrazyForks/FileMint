@@ -4,6 +4,7 @@ import CoreText
 import ImageIO
 import SwiftUI
 import FileMintCore
+import FileMintImages
 
 @MainActor
 final class FileOperationCoordinator {
@@ -66,6 +67,12 @@ final class ResourceToolsSmoke: NSObject, NSApplicationDelegate {
         try makeImage(first, blue: false)
         try makeImage(second, blue: true)
         let original = try Data(contentsOf: first)
+        try FileMintPreferencesStore(fileURL: preferencesFile).save(preferences)
+        try await cancelledPreviewThenMetadata(selection: [first, second], preferencesFile: preferencesFile)
+        if ProcessInfo.processInfo.environment["FILEMINT_RESOURCE_REGRESSION_ONLY"] == "1" {
+            guard try Data(contentsOf: first) == original else { throw ResourceError.sourceChanged }
+            return
+        }
         for (language, appearance) in [(AppLanguage.chinese, NSAppearance.Name.aqua), (.english, .darkAqua)] {
             NSApp.appearance = NSAppearance(named: appearance)
             preferences.language = language
@@ -134,6 +141,35 @@ final class ResourceToolsSmoke: NSObject, NSApplicationDelegate {
         }
         guard try Data(contentsOf: first) == original else { throw ResourceError.sourceChanged }
         print("PASS original preserved; clipboard untouched; no owner preferences loaded; fixture=\(root.path)")
+    }
+
+    private func cancelledPreviewThenMetadata(selection: [URL], preferencesFile: URL) async throws {
+        // Hold the actual preview worker at a deterministic boundary, then reuse
+        // one production controller just as the app's singleton is reused.
+        let gate = DispatchGroup()
+        gate.enter()
+        var released = false
+        defer { if !released { gate.leave() } }
+        let controller = ResourceToolsController(preferencesFile: preferencesFile, preview: { input in
+            guard gate.wait(timeout: .now() + 15) == .success else { throw ResourceError.failed }
+            return try ImageProcessor.previewInfo(input)
+        })
+        activeController = controller
+        let first = Task { try await controller.present(selection: selection, tool: .convert) }
+        try await waitUntil { controller.isPreparing }
+        controller.cancel()
+        guard !controller.isPreparing else { throw ResourceError.failed }
+        gate.leave()
+        released = true
+        try await first.value
+        let second = Task { try await controller.present(selection: selection, tool: .removeMetadata) }
+        try await waitUntil { controller.result != nil && !controller.isRunning && !controller.isPreparing }
+        guard let result = controller.result, result.failure == nil,
+              result.completed == selection.count, !result.cancelled else { throw ResourceError.failed }
+        controller.cancel()
+        try await second.value
+        activeController = nil
+        print("PASS reused resource controller: cancel in-flight preview, automatically remove metadata, preserve originals")
     }
 
     private func waitUntil(_ condition: @MainActor () -> Bool) async throws {

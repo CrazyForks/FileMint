@@ -3,6 +3,37 @@
 Checked on 2026-09-14, macOS 26.6.2, Apple silicon. Minimum deployment target:
 macOS 13. Release bundles contain arm64 and x86_64 executables.
 
+## Code review regression fixes — 2026-09-30
+
+Checked on macOS 27.2, arm64, `fc8b7fe` plus the uncommitted review fixes.
+
+- `make verify` passed: 181 Core tests, 14 image tests, 5 public Harness cases,
+  10 CLI regressions and the offline release/appcast/entitlement checks.
+  New cases keep permission-blocked quick tickets available to the authorization
+  handler without granting write scope, reject a symlink escape after access is
+  restored, and deduplicate a renamed favorite after simulated device renumbering.
+- Three isolated release-resume tests use a disposable Git repository and offline
+  signing/network adapters. They verify that interrupted builds retain their
+  original source record, matching source resumes unchanged bytes without a
+  rebuild, and a different commit or missing/malformed/mismatched record stops
+  before external calls while preserving the stage. No Apple submission or
+  public release was performed.
+- `CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO make build` passed for the
+  Release App and Finder extension. `make verify-favorite-model` passed its
+  isolated 1,000-entry, concurrent-edit, recovery and busy-guard checks.
+- Built `scripts/build_resource_tools_harness.sh` and launched its app with
+  `FILEMINT_RESOURCE_REGRESSION_ONLY=1`. A gated production preview was cancelled;
+  the same controller then automatically cleaned two synthetic images, completed
+  successfully and retained the original bytes. The fixture loaded only its own
+  settings and exited. This is native controller evidence, not installed Finder
+  callback, sandbox authorization or minimum-macOS acceptance.
+- Local logs: [standard checks](../build/review-fixes.noindex/verify.log),
+  [Release build](../build/review-fixes.noindex/build.log),
+  [favorite model](../build/review-fixes.noindex/favorite-model.log), and
+  [resource lifecycle](../build/review-fixes.noindex/resource-regression.log).
+  Real Finder authorization prompts and signed/notarized artifact delivery were
+  not run for these fixes. The installed app and user preferences were not replaced.
+
 ## FileMint 0.6.4 release — 2026-09-30
 
 The arm64/macOS 13+ [0.6.4 release](RELEASE_VERIFICATION_0.6.4.md), build 23,

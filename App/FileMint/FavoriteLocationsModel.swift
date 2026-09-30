@@ -289,9 +289,7 @@ final class FavoriteLocationsModel: ObservableObject {
             try await edit { changed in
                 guard let index = changed.items.firstIndex(where: { $0.id == id }),
                       changed.items[index].bookmark == item.bookmark else { throw FavoriteLocationError.unavailable }
-                guard !changed.items.contains(where: { $0.id != id &&
-                    ($0.url.standardizedFileURL == replacement.url.standardizedFileURL ||
-                     ($0.device == replacement.device && $0.inode == replacement.inode)) }) else {
+                guard !changed.containsTarget(replacement, excluding: id) else {
                     throw FavoriteLocationError.invalidSelection
                 }
                 var refreshed = replacement

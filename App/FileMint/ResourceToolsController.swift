@@ -29,11 +29,14 @@ final class ResourceToolsController: NSObject, ObservableObject, NSWindowDelegat
     private var grantedFolders: [URL] = []
     private var generation = UUID()
     private let preferencesFile: URL?
+    private let preview: @Sendable (ImageInput) throws -> ImagePreview
     private var fromFinder = true
     private var previewOrder: [URL] = []
 
-    init(preferencesFile: URL? = nil) {
+    init(preferencesFile: URL? = nil,
+         preview: @escaping @Sendable (ImageInput) throws -> ImagePreview = ImageProcessor.previewInfo) {
         self.preferencesFile = preferencesFile
+        self.preview = preview
         super.init()
     }
 
@@ -85,6 +88,7 @@ final class ResourceToolsController: NSObject, ObservableObject, NSWindowDelegat
         selectedIndex = 0
         editedText = nil
         previewOrder = []
+        isPreparing = false
         isRunning = false
         isCancelling = false
         generation = UUID()
@@ -117,10 +121,11 @@ final class ResourceToolsController: NSObject, ObservableObject, NSWindowDelegat
         isPreparing = true
         let batch = requested ?? Array(inputs.prefix(20))
         let id = generation
+        let preview = self.preview
         previewWorker = Task {
             for input in batch {
                 if Task.isCancelled || generation != id { break }
-                let decoder = Task.detached(priority: .utility) { try? ImageProcessor.previewInfo(input) }
+                let decoder = Task.detached(priority: .utility) { try? preview(input) }
                 let thumbnail = await withTaskCancellationHandler(operation: { await decoder.value }, onCancel: { decoder.cancel() })
                 guard !Task.isCancelled, generation == id else { break }
                 if let thumbnail {
@@ -293,6 +298,7 @@ final class ResourceToolsController: NSObject, ObservableObject, NSWindowDelegat
     func windowWillClose(_ notification: Notification) {
         previewWorker?.cancel()
         generation = UUID()
+        isPreparing = false
         let grants = grantedFolders
         grantedFolders = []
         panel = nil

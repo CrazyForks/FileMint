@@ -97,9 +97,14 @@ embedded entitlements, checksum and signed `appcast.xml`. It saves the final DMG
 `.sha256`, appcast and source manifest under `build/`. A missing Sparkle installer
 configuration or feed now fails the release, even when other signatures pass.
 Keep the final files intact. If notarization is pending or its wait times out,
-the script retains the staging DMG and its submission ID. Check that same ID at
+the script retains the staging DMG, its submission ID and `source.json` recording
+the original source commit, tag, version and build. Check that same ID at
 Apple, then resume with `FILEMINT_RESUME_STAGE=/path/printed/by/script make
-release-local`. This verifies the submitted or recorded stapled DMG hash; a
+release-local`. Resume first requires the original clean tagged source to match
+`source.json`; a different commit or a legacy stage without that record is rejected
+without changing the retained files. Restore the original source or build a new
+candidate; do not manufacture a source record for an older DMG.
+This also verifies the submitted or recorded stapled DMG hash; a
 pending submission waits on the same ID, while a completed ticket is revalidated
 without another upload. Stapling uses a private copy and records its verified
 hash before replacing the submitted file, so interruptions preserve a recoverable

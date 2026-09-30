@@ -160,4 +160,37 @@ struct FavoriteLocationsTests {
         favorite.device += 1
         #expect(!favorite.matchesIdentity(identity, kind: .file, volumeUUID: nil))
     }
+
+    @Test("add and relink deduplicate a renamed favorite after device renumbering")
+    func persistentDuplicateIdentity() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("favorite-duplicate-\(UUID())")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let original = folder.appendingPathComponent("original.txt")
+        let renamed = folder.appendingPathComponent("renamed.txt")
+        try Data("original".utf8).write(to: original)
+        let identity = try FileMoveItem.capture(original)
+        let saved = FavoriteLocation(url: original,
+            bookmark: try original.bookmarkData(options: .minimalBookmark,
+                includingResourceValuesForKeys: [.volumeUUIDStringKey], relativeTo: nil),
+            device: identity.device + 37, inode: identity.inode, createdAt: identity.createdAt,
+            kind: .file, name: "Saved")
+        try FileManager.default.moveItem(at: original, to: renamed)
+        let current = FavoriteLocation(url: renamed,
+            bookmark: try renamed.bookmarkData(options: .minimalBookmark,
+                includingResourceValuesForKeys: [.volumeUUIDStringKey], relativeTo: nil),
+            device: identity.device, inode: identity.inode, createdAt: identity.createdAt,
+            kind: .file, name: "Renamed")
+        var catalog = FavoriteLocationsCatalog(items: [saved])
+        #expect(catalog.containsTarget(current))
+        #expect(!catalog.containsTarget(current, excluding: saved.id))
+        let result = try catalog.add([current])
+        #expect(result.added == 0 && result.duplicates == 1)
+        #expect(catalog.items == [saved])
+
+        var replacement = current
+        replacement.createdAt = try #require(identity.createdAt).addingTimeInterval(1)
+        #expect(!catalog.containsTarget(replacement))
+        #expect(try catalog.add([replacement]).added == 1)
+    }
 }

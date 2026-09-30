@@ -29,6 +29,7 @@ verify-release-metadata:
 
 verify-release-notarization:
 	python3 scripts/test_notarize_dmg.py
+	python3 scripts/test_release_resume.py
 
 verify-signing-entitlements:
 	python3 scripts/test_signing_entitlements.py

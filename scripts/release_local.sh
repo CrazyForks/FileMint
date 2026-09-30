@@ -15,6 +15,26 @@ head_commit="$(git rev-parse HEAD)"
 tag_commit="$(git rev-parse --verify "refs/tags/$tag^{commit}" 2>/dev/null || true)"
 [[ "$tag_commit" == "$head_commit" ]] || { echo "Create $tag at the current commit before building" >&2; exit 2; }
 [[ -z "$(git status --porcelain --untracked-files=all)" ]] || { echo 'Commit all release changes before building' >&2; exit 2; }
+
+# A notary record binds bytes to Apple, not to source. Refuse a stale or legacy
+# stage before any network/credential work rather than relabeling its old DMG.
+if [[ -n "${FILEMINT_RESUME_STAGE:-}" ]]; then
+  stage_directory="$(cd "$FILEMINT_RESUME_STAGE" && pwd -P)"
+  [[ "$stage_directory" == "$PWD/build/local-release-work.noindex/run."* &&
+     -f "$stage_directory/FileMint-$version.dmg.notary.json" ]] || {
+    echo 'Resume only a retained FileMint notarization staging directory' >&2
+    exit 2
+  }
+  source_record="$stage_directory/source.json"
+  if [[ ! -f "$source_record" || -L "$source_record" ]] ||
+     ! jq -e --arg version "$version" --arg build "$build_number" --arg tag "$tag" --arg commit "$head_commit" \
+       '.version == $version and .build == $build and .tag == $tag and .commit == $commit' \
+       "$source_record" > /dev/null; then
+    echo 'Retained release source is missing or differs from the current tagged commit. Keep the stage; restore its original source or build a new candidate.' >&2
+    exit 2
+  fi
+fi
+
 latest_tag="$(gh release view --repo FileMintApp/FileMint --json tagName --jq .tagName)"
 [[ "$latest_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Cannot validate the latest stable release' >&2; exit 2; }
 latest_feed_directory="$(mktemp -d /private/tmp/filemint-latest-appcast.XXXXXX)"
@@ -42,15 +62,10 @@ if [[ -n "${APPLE_NOTARY_KEYCHAIN_PROFILE:-}" ]]; then
 fi
 
 mkdir -p build/local-release-work.noindex
-if [[ -n "${FILEMINT_RESUME_STAGE:-}" ]]; then
-  stage_directory="$(cd "$FILEMINT_RESUME_STAGE" && pwd -P)"
-  [[ "$stage_directory" == "$PWD/build/local-release-work.noindex/run."* &&
-     -f "$stage_directory/FileMint-$version.dmg.notary.json" ]] || {
-    echo 'Resume only a retained FileMint notarization staging directory' >&2
-    exit 2
-  }
-else
+if [[ -z "${FILEMINT_RESUME_STAGE:-}" ]]; then
   stage_directory="$(mktemp -d "$PWD/build/local-release-work.noindex/run.XXXXXX")"
+  jq -n --arg version "$version" --arg build "$build_number" --arg tag "$tag" --arg commit "$head_commit" \
+    '{version: $version, build: $build, tag: $tag, commit: $commit}' > "$stage_directory/source.json"
 fi
 cleanup_stage() {
   local status=$?
@@ -61,7 +76,7 @@ cleanup_stage() {
   fi
   if [[ "$stage_directory" == "$PWD/build/local-release-work.noindex/run."* ]]; then
     rm -f "$stage_directory/FileMint-$version.dmg" "$stage_directory/FileMint-$version.dmg.sha256" \
-      "$stage_directory/FileMint-$version.dmg.notary.json" "$stage_directory/appcast.xml"
+      "$stage_directory/FileMint-$version.dmg.notary.json" "$stage_directory/appcast.xml" "$stage_directory/source.json"
     rmdir "$stage_directory" 2>/dev/null || true
   fi
   exit "$status"

@@ -77,7 +77,9 @@ public struct QuickCreationTicketStore: Sendable {
         if intent == .template && !preferences.templates.contains(where: { $0.id == ticket.templateID && $0.isEnabled }) {
             return nil
         }
-        guard FolderScope.containsResolvedDirectory(ticket.directory, in: preferences.monitoredFolderURLs) else { return nil }
+        // The main app must authorize and recheck a permission-blocked path
+        // before reading the clipboard or writing anything.
+        guard FolderScope.directoryAccess(ticket.directory, in: preferences.monitoredFolderURLs) != .outsideScope else { return nil }
         return ticket
     }
 }

@@ -52,13 +52,30 @@ public struct FavoriteLocation: Codable, Equatable, Identifiable, Sendable {
     /// without trusting the current occupant of a saved path.
     public func matchesIdentity(_ candidate: FileMoveItem, kind: FavoriteLocationKind,
                                 volumeUUID: String?) -> Bool {
-        guard candidate.inode == inode, kind == self.kind,
-              createdAt == nil || candidate.createdAt == createdAt else { return false }
+        identity.matches(Identity(device: candidate.device, inode: candidate.inode,
+            createdAt: candidate.createdAt, kind: kind, volumeUUID: volumeUUID))
+    }
+
+    fileprivate var identity: Identity {
         let resources = NSURL.resourceValues(forKeys: [.volumeUUIDStringKey], fromBookmarkData: bookmark)
-        if let savedVolume = resources?[.volumeUUIDStringKey] as? String, !savedVolume.isEmpty {
-            return volumeUUID == savedVolume
+        let volume = resources?[.volumeUUIDStringKey] as? String
+        return Identity(device: device, inode: inode, createdAt: createdAt, kind: kind,
+            volumeUUID: volume?.isEmpty == false ? volume : nil)
+    }
+
+    fileprivate struct Identity {
+        let device: UInt64
+        let inode: UInt64
+        let createdAt: Date?
+        let kind: FavoriteLocationKind
+        let volumeUUID: String?
+
+        func matches(_ candidate: Self) -> Bool {
+            guard candidate.inode == inode, candidate.kind == kind,
+                  createdAt == nil || candidate.createdAt == createdAt else { return false }
+            if let volumeUUID { return candidate.volumeUUID == volumeUUID }
+            return candidate.device == device
         }
-        return candidate.device == device
     }
 }
 
@@ -76,18 +93,30 @@ public struct FavoriteLocationsCatalog: Codable, Equatable, Sendable {
               newItems.allSatisfy({ OpenWithPolicy.isLocalFileURL($0.url) && $0.url.path != "/" && !$0.name.isEmpty &&
                   (1...131_072).contains($0.bookmark.count) }) else { throw FavoriteLocationError.invalidSelection }
         var knownPaths = Set(items.map { $0.url.standardizedFileURL.path })
-        var knownIdentities = Set(items.map { "\($0.device):\($0.inode)" })
+        // Decode bookmark metadata once per entry, then only compare matching
+        // file numbers. Device numbers remain a fallback for legacy bookmarks.
+        var knownIdentities = Dictionary(grouping: items.map(\.identity), by: \.inode)
         var added = 0, duplicates = 0
         for item in newItems {
             let path = item.url.standardizedFileURL.path
-            let identity = "\(item.device):\(item.inode)"
-            if knownPaths.contains(path) || knownIdentities.contains(identity) { duplicates += 1; continue }
+            let identity = item.identity
+            if knownPaths.contains(path) || knownIdentities[identity.inode, default: []].contains(where: { $0.matches(identity) }) {
+                duplicates += 1
+                continue
+            }
             items.append(item)
             knownPaths.insert(path)
-            knownIdentities.insert(identity)
+            knownIdentities[identity.inode, default: []].append(identity)
             added += 1
         }
         return FavoriteAddResult(added: added, duplicates: duplicates)
+    }
+
+    public func containsTarget(_ candidate: FavoriteLocation, excluding id: UUID? = nil) -> Bool {
+        let identity = candidate.identity
+        return items.contains {
+            $0.id != id && ($0.url.standardizedFileURL == candidate.url.standardizedFileURL || $0.identity.matches(identity))
+        }
     }
 
     public func quickItems(pinnedLimit: Int = 6, recentLimit: Int = 4) -> [FavoriteLocation] {

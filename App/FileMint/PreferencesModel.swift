@@ -503,7 +503,20 @@ final class PreferencesModel: ObservableObject {
                 let ticket = try await Task.detached(priority: .userInitiated) {
                     try QuickCreationTicketStore().consume(url, preferences: snapshot)
                 }.value
-                guard let ticket else { return }
+                guard let ticket, let intent = ticket.resolvedIntent else { return }
+                if FolderScope.directoryAccess(ticket.directory, in: preferences.monitoredFolderURLs) == .requiresAuthorization {
+                    if CustomFileSavePanelController.shared.focusExistingPanel() { return }
+                    guard authorizeQuickCreationDirectory(ticket.directory) else { return }
+                    if intent == .template {
+                        guard preferences.templates.contains(where: { $0.id == ticket.templateID && $0.isEnabled }) else { return }
+                        // Permission recovery still requires Create in the draft;
+                        // accepting a folder prompt alone never writes a file.
+                        CustomFileSavePanelController.shared.present(in: ticket.directory, preferences: preferences,
+                            templateID: ticket.templateID, documentTemplates: documentTemplates)
+                        return
+                    }
+                }
+                guard FolderScope.directoryAccess(ticket.directory, in: preferences.monitoredFolderURLs) == .allowed else { return }
                 switch ticket.resolvedIntent {
                 case .clipboardImage: await presentClipboardImage(in: ticket.directory)
                 case .clipboardText: presentClipboardText(in: ticket.directory)
@@ -511,6 +524,48 @@ final class PreferencesModel: ObservableObject {
                 case nil: break
                 }
             } catch { lastError = error.localizedDescription }
+        }
+    }
+
+    private func authorizeQuickCreationDirectory(_ directory: URL) -> Bool {
+        guard !isPreparingCreation else { return false }
+        isPreparingCreation = true
+        defer { isPreparingCreation = false }
+        let picker = NSOpenPanel()
+        picker.canChooseFiles = false
+        picker.canChooseDirectories = true
+        picker.allowsMultipleSelection = false
+        picker.canCreateDirectories = false
+        picker.directoryURL = directory
+        picker.message = text(.authorizeFolderHint)
+        picker.prompt = text(.allowFolder)
+        NSApp.activate(ignoringOtherApps: true)
+        guard picker.runModal() == .OK, let chosen = picker.url else { return false }
+        let granted = chosen.startAccessingSecurityScopedResource()
+        defer { if granted { chosen.stopAccessingSecurityScopedResource() } }
+        guard chosen.resolvingSymlinksInPath().standardizedFileURL == directory.resolvingSymlinksInPath().standardizedFileURL,
+              FolderScope.directoryAccess(directory, in: preferences.monitoredFolderURLs) == .allowed else {
+            let alert = NSAlert()
+            alert.messageText = text(.createFileErrorTitle)
+            alert.informativeText = text(.moveChooseExactFolder)
+            alert.runModal()
+            return false
+        }
+        let previous = preferences
+        do {
+            try FolderAccess.remember(chosen, in: &preferences)
+            guard save() else {
+                preferences = previous
+                showCreationFailure(lastError ?? text(.preferencesRecoveryRequired))
+                return false
+            }
+            folderAccess.restore(preferences)
+            return true
+        } catch {
+            preferences = previous
+            lastError = error.localizedDescription
+            showCreationFailure(error.localizedDescription)
+            return false
         }
     }
 
@@ -533,13 +588,17 @@ final class PreferencesModel: ObservableObject {
                 CustomFileSavePanelController.shared.present(in: ticket.directory, preferences: preferences, templateID: ticket.templateID,
                     documentTemplates: documentTemplates)
             } else {
-                let alert = NSAlert()
-                alert.messageText = text(.createFileErrorTitle)
-                alert.informativeText = (error as? DocumentTemplateError).map { text($0.textKey) } ?? error.localizedDescription
-                NSApp.activate(ignoringOtherApps: true)
-                alert.runModal()
+                showCreationFailure((error as? DocumentTemplateError).map { text($0.textKey) } ?? error.localizedDescription)
             }
         }
+    }
+
+    private func showCreationFailure(_ message: String) {
+        let alert = NSAlert()
+        alert.messageText = text(.createFileErrorTitle)
+        alert.informativeText = message
+        NSApp.activate(ignoringOtherApps: true)
+        alert.runModal()
     }
 
     func openExtensionSettings() { FinderIntegrationStatus.showSettings() }
