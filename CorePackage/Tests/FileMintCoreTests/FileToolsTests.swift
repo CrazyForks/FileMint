@@ -43,7 +43,7 @@ struct FileToolsTests {
         #expect(FileToolsPolicy.availableTools(selection: files, isItemMenu: true, preferences: value).isEmpty)
     }
 
-    @Test("tools require a whole valid selection in scope, never background or stale selections")
+    @Test("selection tools require a whole valid item-menu selection in scope")
     func menuScope() {
         let value = enabledPreferences()
         let item = root.appendingPathComponent("文件夹", isDirectory: true)
@@ -54,6 +54,83 @@ struct FileToolsTests {
                       URL(string: "https://example.com/a.txt")!] {
             #expect(FileToolsPolicy.availableTools(selection: [item, other], isItemMenu: true, preferences: value).isEmpty)
         }
+    }
+
+    @Test("background Copy Paths captures the current folder and ignores stale selections")
+    func backgroundTarget() throws {
+        var value = enabledPreferences()
+        for tool in FileTool.allCases { value.fileTools.setEnabled(true, for: tool) }
+        let stale = URL(fileURLWithPath: "/Users/example/Elsewhere/old.txt")
+        // A container callback needs no metadata, including at a configured root.
+        let current = URL(fileURLWithPath: root.path)
+        let target = try #require(FileToolsPolicy.target(directory: current, selection: [stale],
+            isItemMenu: false, isContainer: true))
+        #expect(target == .directory(current))
+        #expect(FileToolsPolicy.availableTools(target: target, preferences: value) == [.copyPaths])
+        #expect(FileToolsPolicy.clipboardText(for: .copyPaths, target: target) == "/Users/example/Work")
+        for tool in FileTool.allCases where tool != .copyPaths {
+            #expect(FileToolsPolicy.clipboardText(for: tool, target: target) == nil)
+        }
+        let nested = root.appendingPathComponent("资料 % 🪴", isDirectory: true)
+        #expect(FileToolsPolicy.availableTools(target: .directory(nested), preferences: value) == [.copyPaths])
+        #expect(FileToolsPolicy.clipboardText(for: .copyPaths, target: .directory(nested)) == "/Users/example/Work/资料 % 🪴")
+    }
+
+    @Test("toolbar, sidebar, empty item and out-of-scope contexts cannot become background targets")
+    func invalidBackgroundContexts() {
+        let value = enabledPreferences()
+        let item = root.appendingPathComponent("note.txt")
+        #expect(FileToolsPolicy.target(directory: root, selection: [item],
+            isItemMenu: false, isContainer: false) == nil)
+        #expect(FileToolsPolicy.target(directory: root, selection: [],
+            isItemMenu: true, isContainer: false) == nil)
+        #expect(FileToolsPolicy.target(directory: root, selection: [item],
+            isItemMenu: true, isContainer: false) == .selection([item]))
+        for directory in [URL(fileURLWithPath: "/Users/example/Work-Other", isDirectory: true),
+                          URL(string: "https://example.com/Work/")!] {
+            #expect(FileToolsPolicy.availableTools(target: .directory(directory), preferences: value).isEmpty)
+        }
+        let outside = URL(fileURLWithPath: "/Users/example/Elsewhere/old.txt")
+        #expect(FileToolsPolicy.availableTools(target: .selection([item, outside]), preferences: value).isEmpty)
+    }
+
+    @Test("background menu placement follows Copy Paths and revoked choices reject old actions")
+    func backgroundPreferences() {
+        var value = enabledPreferences()
+        let target = FileToolTarget.directory(root)
+        func layout() -> FileToolsMenuLayout {
+            FileToolsMenuLayout(tools: FileToolsPolicy.availableTools(target: target, preferences: value),
+                hasMoveDestination: false, preferences: value.fileTools)
+        }
+        #expect(layout().main.isEmpty && layout().submenu == [.copyPaths] && layout().showsSubmenu)
+        value.fileTools.mainMenuTools.insert(.copyPaths)
+        #expect(layout().main == [.copyPaths] && !layout().showsSubmenu)
+        value.fileTools.copyPaths = false
+        #expect(layout().main.isEmpty && !layout().showsSubmenu)
+        value.fileTools.copyPaths = true
+        value.fileTools.isEnabled = false
+        #expect(FileToolsPolicy.availableTools(target: target, preferences: value).isEmpty)
+        value.fileTools.isEnabled = true
+        value.monitoredFolderURLs = [root.appendingPathComponent("child", isDirectory: true)]
+        #expect(FileToolsPolicy.availableTools(target: target, preferences: value).isEmpty)
+    }
+
+    @Test("overlapping background menus retain their original directory and consume once")
+    func capturedBackgroundActions() throws {
+        var registry = FileMenuActionRegistry()
+        let first = registry.register([FileMenuAction(directory: root, tool: .copyPaths,
+            target: .directory(root))])[0]
+        let later = root.appendingPathComponent("Later", isDirectory: true)
+        _ = registry.register([FileMenuAction(directory: later, tool: .copyPaths,
+            target: .directory(later))])
+        let firstAction = registry.takeAction(for: first)
+        let captured = try #require(firstAction)
+        let target = try #require(captured.fileToolTarget)
+        #expect(captured.selection.isEmpty)
+        #expect(target == .directory(root))
+        #expect(FileToolsPolicy.clipboardText(for: .copyPaths, target: target) == "/Users/example/Work")
+        let consumed = registry.takeAction(for: first)
+        #expect(consumed == nil)
     }
 
     @Test("names and paths preserve order, extensions, Unicode, spaces and literal characters")

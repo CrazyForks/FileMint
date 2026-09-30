@@ -2,8 +2,33 @@ import AppKit
 import FileMintCore
 import SwiftUI
 
+private struct FinderMenuIconStyleKey: EnvironmentKey {
+    static let defaultValue: FinderMenuIconStyle = .colored
+}
+
+extension EnvironmentValues {
+    var finderMenuIconStyle: FinderMenuIconStyle {
+        get { self[FinderMenuIconStyleKey.self] }
+        set { self[FinderMenuIconStyleKey.self] = newValue }
+    }
+}
+
+struct FinderMenuIconStylePicker: View {
+    @Binding var selection: FinderMenuIconStyle
+    let language: AppLanguage
+
+    var body: some View {
+        Picker(FileMintStrings.text(.finderMenuIconStyle, language: language), selection: $selection) {
+            ForEach(FinderMenuIconStyle.allCases) { style in
+                Text(FileMintStrings.text(style.title, language: language)).tag(style)
+            }
+        }.settingsMenu().accessibilityIdentifier("settings.finderMenuIconStyle")
+    }
+}
+
 /// App-only editor. Finder receives only the saved symbol name and colors.
 struct MenuIconControl: View {
+    @Environment(\.finderMenuIconStyle) private var style
     @Binding private var customization: MenuIconCustomization?
     let language: AppLanguage
     private let target: Target
@@ -29,13 +54,14 @@ struct MenuIconControl: View {
             if case .slot(.airDrop) = self { return MenuIconSlot.airDrop.defaultSymbolName }
             return nil
         }
-        func image(customization: MenuIconCustomization?, size: CGFloat) -> NSImage? {
+        func image(customization: MenuIconCustomization?, size: CGFloat, style: FinderMenuIconStyle) -> NSImage? {
             switch self {
             case .slot(let slot):
-                return FileToolAppearance.image(for: slot, customization: customization, size: size, defaultBundle: Bundle.main)
+                return FileToolAppearance.image(for: slot, customization: customization, size: size,
+                    defaultBundle: Bundle.main, style: style)
             case .template(var template):
                 template.customMenuIcon = customization
-                return FileToolAppearance.image(for: template, size: size)
+                return FileToolAppearance.image(for: template, size: size, style: style)
             }
         }
     }
@@ -59,8 +85,9 @@ struct MenuIconControl: View {
     var body: some View {
         Button { editing = true } label: {
             HStack(spacing: 7) {
-                if let icon = target.image(customization: customization, size: 18) {
-                    Image(nsImage: icon).resizable().interpolation(.high)
+                if let icon = target.image(customization: customization, size: 18, style: style) {
+                    Image(nsImage: icon).renderingMode(style == .systemMonochrome ? .template : .original)
+                        .resizable().interpolation(.high).foregroundStyle(.primary)
                         .frame(width: 18, height: 18).accessibilityHidden(true)
                 }
                 Text(MenuIconText.choose(language))
@@ -70,7 +97,7 @@ struct MenuIconControl: View {
         .popover(isPresented: $editing, arrowEdge: .trailing) {
             MenuIconEditor(customization: $customization, defaultSymbol: target.symbol,
                 defaultColors: target.colors, allowedRestrictedName: target.allowedRestrictedName,
-                language: language)
+                language: language, style: style)
         }
     }
 }
@@ -81,6 +108,7 @@ private struct MenuIconEditor: View {
     let defaultColors: (NSColor, NSColor)
     let allowedRestrictedName: String?
     let language: AppLanguage
+    let style: FinderMenuIconStyle
     @Environment(\.dismiss) private var dismiss
     @State private var symbolName: String
     @State private var search = ""
@@ -89,12 +117,14 @@ private struct MenuIconEditor: View {
     @State private var secondary: Color
 
     init(customization: Binding<MenuIconCustomization?>, defaultSymbol: String,
-         defaultColors: (NSColor, NSColor), allowedRestrictedName: String?, language: AppLanguage) {
+         defaultColors: (NSColor, NSColor), allowedRestrictedName: String?, language: AppLanguage,
+         style: FinderMenuIconStyle) {
         self._customization = customization
         self.defaultSymbol = defaultSymbol
         self.defaultColors = defaultColors
         self.allowedRestrictedName = allowedRestrictedName
         self.language = language
+        self.style = style
         self._symbolName = State(initialValue: customization.wrappedValue?.symbolName ?? defaultSymbol)
         let first = customization.wrappedValue.flatMap { Self.color($0.primaryHex) } ?? defaultColors.0
         let second = customization.wrappedValue.flatMap { Self.color($0.secondaryHex) } ?? defaultColors.1
@@ -107,7 +137,7 @@ private struct MenuIconEditor: View {
     }
     private var preview: NSImage? {
         guard !isRestricted else { return nil }
-        return proposed.flatMap { FileToolAppearance.image(for: $0, size: 32) }
+        return proposed.flatMap { FileToolAppearance.image(for: $0, size: 32, style: style) }
     }
     private var isRestricted: Bool {
         symbolName != allowedRestrictedName && SystemSymbolCatalog.isRestricted(symbolName)
@@ -122,7 +152,10 @@ private struct MenuIconEditor: View {
             Text(MenuIconText.title(language)).font(.headline)
             HStack(spacing: 12) {
                 Group {
-                    if let preview { Image(nsImage: preview).resizable().interpolation(.high).frame(width: 32, height: 32) }
+                    if let preview {
+                        Image(nsImage: preview).renderingMode(style == .systemMonochrome ? .template : .original)
+                            .resizable().interpolation(.high).foregroundStyle(.primary).frame(width: 32, height: 32)
+                    }
                     else { Image(systemName: "questionmark.square.dashed").frame(width: 32, height: 32) }
                 }.accessibilityHidden(true)
                 TextField(MenuIconText.symbolName(language), text: $symbolName)
@@ -159,8 +192,9 @@ private struct MenuIconEditor: View {
             HStack(spacing: 14) {
                 ColorPicker(MenuIconText.primary(language), selection: $primary, supportsOpacity: false)
                 ColorPicker(MenuIconText.secondary(language), selection: $secondary, supportsOpacity: false)
-            }
-            Text(MenuIconText.colorHint(language)).font(.caption).foregroundStyle(.secondary)
+            }.disabled(style == .systemMonochrome)
+            Text(style == .systemMonochrome ? MenuIconText.monochromeHint(language) : MenuIconText.colorHint(language))
+                .font(.caption).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             HStack {
                 Button(MenuIconText.reset(language)) { customization = nil; dismiss() }
@@ -215,6 +249,7 @@ private enum MenuIconText {
     static func primary(_ language: AppLanguage) -> String { text(language, "Main", "主色") }
     static func secondary(_ language: AppLanguage) -> String { text(language, "Accent", "辅色") }
     static func colorHint(_ language: AppLanguage) -> String { text(language, "Some symbols use only the main color.", "部分符号只使用主色。") }
+    static func monochromeHint(_ language: AppLanguage) -> String { text(language, "System Monochrome is on. Switch to Colored in General → Appearance to edit colors; your saved colors are preserved.", "已启用系统单色。可在通用 → 外观切回彩色后编辑配色；已保存的颜色会保留。") }
     static func reset(_ language: AppLanguage) -> String { text(language, "Use Default", "恢复默认") }
     static func cancel(_ language: AppLanguage) -> String { text(language, "Cancel", "取消") }
     static func save(_ language: AppLanguage) -> String { text(language, "Save", "保存") }

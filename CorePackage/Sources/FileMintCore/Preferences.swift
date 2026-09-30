@@ -51,6 +51,7 @@ public struct FileMintPreferences: Codable, Equatable, Sendable {
     public var favoriteLocations = FavoriteLocationsPreferences()
     public var newFileMenuPlacement: NewFileMenuPlacement = .submenu
     public var menuIcons: [String: MenuIconCustomization] = [:]
+    public var finderMenuIconStyle: FinderMenuIconStyle = .colored
     private var folderScopeVersion = 2
 
     public init(
@@ -105,6 +106,7 @@ public struct FileMintPreferences: Codable, Equatable, Sendable {
         case favoriteLocations
         case newFileMenuPlacement
         case menuIcons
+        case finderMenuIconStyle
     }
 
     public init(from decoder: Decoder) throws {
@@ -148,6 +150,7 @@ public struct FileMintPreferences: Codable, Equatable, Sendable {
         newFileMenuPlacement = (try? container.decode(NewFileMenuPlacement.self, forKey: .newFileMenuPlacement)) ?? .submenu
         menuIcons = ((try? container.decode([String: MenuIconCustomization].self, forKey: .menuIcons)) ?? [:])
             .filter { MenuIconSlot(rawValue: $0.key) != nil }
+        finderMenuIconStyle = (try? container.decode(FinderMenuIconStyle.self, forKey: .finderMenuIconStyle)) ?? .colored
     }
 
     public static var `default`: FileMintPreferences {

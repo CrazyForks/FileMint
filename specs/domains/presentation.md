@@ -34,8 +34,9 @@ Part of the [FileMint SPEC](../SPEC.md). This file owns the behavior below; othe
   or disabled placeholders for future roadmap features. Follow system language
   by default; English and Chinese can be selected explicitly.
 - General owns appearance, language, startup/menu bar and automatic-check preferences.
-  Its Appearance group contains Theme (Follow System, Light, Dark) and interface
-  language. Settings pickers use native small menu controls with adaptive primary
+  Its Appearance group contains Theme (Follow System, Light, Dark), interface
+  language and Finder Menu Icons (Colored, System Monochrome). Settings pickers
+  use native small menu controls with adaptive primary
   text and a shared trailing edge aligned with switches; fixed control columns
   must not center a narrower visible control. Preference labels, supporting text,
   section headings and secondary actions share the same sizing and spacing.
@@ -67,7 +68,7 @@ Part of the [FileMint SPEC](../SPEC.md). This file owns the behavior below; othe
   and noninteractive. An individual disabled tool retains its available checkbox,
   with a muted icon and disabled secondary controls. Preserve readable contrast,
   wrapping, scrolling and native keyboard/accessibility behavior at minimum size.
-- In submenu mode, the New File Finder entry has the small FileMint logo by default and a
+- In Colored mode, the New File Finder entry in submenu mode has the small FileMint logo by default and a
   localized label. New File… carries that logo by default at either menu level. File & Folder Tools uses the system
   `wrench.and.screwdriver` symbol in mint/blue; the temporary Move Selected
   Items Here entry uses `arrow.right.square` in mint/teal. Both are 16 × 16
@@ -99,6 +100,16 @@ Part of the [FileMint SPEC](../SPEC.md). This file owns the behavior below; othe
   selection legibility. Configured App entries continue to use their app icons;
   Favorite Locations child actions and saved-item entries keep their existing
   icons. Their icons are not customizable.
+- Finder Menu Icons is one global style for FileMint's own menu symbols, template
+  entries and logo. Colored retains the existing palette. System Monochrome uses
+  native monochrome SF Symbols and template images, letting Finder choose colors
+  for its current light/dark appearance and highlighted rows. The default New
+  File logo uses the existing monochrome F silhouette. Configured App entries
+  retain their native application icons; Finder toolbar and menu-bar glyphs keep
+  their existing template behavior. Style changes never alter targets or labels.
+  Icon editor and settings previews follow the global style; color controls are
+  disabled in monochrome mode with guidance that saved colors return in Colored.
+  Users may still change a symbol or reset an override while in monochrome mode.
 - App logo: a distinctive folded-paper F in fresh mint on a warm porcelain
   macOS tile. Dock/application assets use the image master; menu bar and Finder
   toolbar use a separately drawn crisp monochrome F silhouette. No medical-style

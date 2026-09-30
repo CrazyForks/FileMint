@@ -4,6 +4,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct TypesPane: View {
+    @Environment(\.finderMenuIconStyle) private var iconStyle
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @EnvironmentObject private var model: PreferencesModel
     @State private var selection: String?
@@ -90,8 +91,9 @@ struct TypesPane: View {
                 .accessibilityLabel(model.templateDisplayName(for: template))
             Button { selection = template.id } label: {
                 HStack(spacing: 12) {
-                    if let icon = FileToolAppearance.image(for: template, size: 24) {
-                        Image(nsImage: icon).resizable().interpolation(.high)
+                    if let icon = FileToolAppearance.image(for: template, size: 24, style: iconStyle) {
+                        Image(nsImage: icon).renderingMode(iconStyle == .systemMonochrome ? .template : .original)
+                            .resizable().interpolation(.high).foregroundStyle(.primary)
                             .frame(width: 24, height: 24).accessibilityHidden(true)
                     }
                     Text(template.fileExtension.uppercased())

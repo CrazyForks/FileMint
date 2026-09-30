@@ -1,5 +1,17 @@
 import Foundation
 
+public enum FinderMenuIconStyle: String, Codable, CaseIterable, Identifiable, Sendable {
+    case colored, systemMonochrome
+
+    public var id: String { rawValue }
+    public var title: FileMintTextKey {
+        switch self {
+        case .colored: .coloredMenuIcons
+        case .systemMonochrome: .systemMonochromeMenuIcons
+        }
+    }
+}
+
 /// Only names and colors are stored; the system supplies the symbol artwork.
 public struct MenuIconCustomization: Codable, Equatable, Sendable {
     public let symbolName: String

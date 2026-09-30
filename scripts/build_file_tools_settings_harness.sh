@@ -10,6 +10,10 @@ APP_PATH="$FIXTURE_DIRECTORY/FileMintToolsUIQA.app"
 mkdir -p "$APP_PATH/Contents/MacOS" "$APP_PATH/Contents/Resources"
 cp Resources/SFSymbolNames.txt Resources/SFSymbolRestrictedNames.txt \
   Resources/SFSymbolCatalog-LICENSE.txt "$APP_PATH/Contents/Resources/"
+cp Resources/Assets.xcassets/FinderMenuIcon.imageset/FileMint-FinderMenuIcon-18x18@2x.png \
+  "$APP_PATH/Contents/Resources/FinderMenuIcon.png"
+cp Resources/Assets.xcassets/FinderRootMenuIcon.imageset/FileMint-FinderRootMenuIcon-16x16@2x.png \
+  "$APP_PATH/Contents/Resources/FinderRootMenuIcon.png"
 python3 - "$APP_PATH" "$FIXTURE_DIRECTORY" <<'PY'
 import pathlib, plistlib, sys
 app, root = map(pathlib.Path, sys.argv[1:])

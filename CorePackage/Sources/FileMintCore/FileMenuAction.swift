@@ -21,6 +21,7 @@ public struct FileMenuAction: Equatable, Sendable {
     public let directory: URL
     public let templateID: String?
     public let tool: FileTool?
+    public var fileToolTarget: FileToolTarget? = nil
     public var resourceTool: ResourceTool? = nil
     public var openWithApplication: OpenWithApplicationReference? = nil
     public var openWithTarget: OpenWithTarget? = nil
@@ -40,8 +41,19 @@ public struct FileMenuAction: Equatable, Sendable {
         self.directory = directory
         self.templateID = nil
         self.tool = tool
+        self.fileToolTarget = .selection(selection)
         self.selection = selection
         self.moveBatchID = nil
+    }
+
+    public init(directory: URL, tool: FileTool, target: FileToolTarget) {
+        let selection: [URL]
+        switch target {
+        case .selection(let urls): selection = urls
+        case .directory: selection = []
+        }
+        self.init(directory: directory, tool: tool, selection: selection)
+        self.fileToolTarget = target
     }
 
     public init(directory: URL, moveBatchID: UUID) {

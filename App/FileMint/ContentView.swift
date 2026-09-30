@@ -43,6 +43,7 @@ struct ContentView: View {
             }.background(FileMintStyle.background)
         }
         .tint(FileMintStyle.accent)
+        .environment(\.finderMenuIconStyle, model.preferences.finderMenuIconStyle)
         .buttonStyle(MintButtonStyle())
         .ignoresSafeArea(.container, edges: .top)
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in

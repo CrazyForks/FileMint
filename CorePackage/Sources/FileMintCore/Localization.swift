@@ -38,6 +38,7 @@ public enum FileMintTextKey: String, CaseIterable, Sendable {
     case documentTooLarge, documentInvalid, documentUnavailable, documentImportFailed, documentDraftEdited
     case followSystem
     case appearance, theme, lightAppearance, darkAppearance
+    case finderMenuIconStyle, coloredMenuIcons, systemMonochromeMenuIcons, finderMenuIconStyleHint
     case launchAtLogin
     case showMenuBar
     case automaticallyCheckForUpdates
@@ -272,6 +273,10 @@ public enum FileMintStrings {
         .theme: ("Theme", "主题"),
         .lightAppearance: ("Light", "浅色"),
         .darkAppearance: ("Dark", "深色"),
+        .finderMenuIconStyle: ("Finder menu icons", "Finder 菜单图标"),
+        .coloredMenuIcons: ("Colored", "彩色"),
+        .systemMonochromeMenuIcons: ("System Monochrome", "系统单色"),
+        .finderMenuIconStyleHint: ("System Monochrome follows Finder’s appearance; saved colors return in Colored. App icons keep their original appearance.", "系统单色跟随 Finder 外观；切回彩色恢复已保存的配色。App 图标保留原样。"),
         .pasteImageFile: ("Paste Image as File…", "图片粘贴为文件…"),
         .newFileFromClipboard: ("New File from Clipboard…", "从剪贴板新建…"),
         .clipboardTextUnsupported: ("Copy one text item, then try again. Copied files and images are not text drafts.", "请先拷贝一段文本再试。文件和图片不会转成文本草稿。"),
@@ -341,7 +346,7 @@ public enum FileMintStrings {
         .toolMainMenu: ("Main menu", "一级菜单"),
         .moveHereMenuPosition: ("“Move Here” menu location", "「移到此处」菜单位置"),
         .copyNamesSettingsHint: ("Includes extensions, one item per line.", "包含文件后缀，多选时每项一行。"),
-        .copyPathsSettingsHint: ("Copies full paths, one item per line.", "拷贝完整路径，多选时每项一行。"),
+        .copyPathsSettingsHint: ("Copies full paths, one item per line; on empty space, copies the current folder path.", "拷贝完整路径，多选时每项一行；空白处右键则拷贝当前文件夹路径。"),
         .moveSettingsHint: ("Select items, then right-click their destination to move them.", "先选择项目，再到目标文件夹右键完成移动。"),
         .deleteSettingsHint: ("Bypasses Trash. Deletion cannot be undone.", "不经过废纸篓，删除后无法撤销。"),
         .showInMainMenu: ("Show in main menu", "显示在一级菜单"),

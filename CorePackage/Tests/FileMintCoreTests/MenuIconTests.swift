@@ -7,6 +7,45 @@ struct MenuIconTests {
         try #require(MenuIconCustomization(symbolName: symbol, primaryHex: "#12ab34", secondaryHex: "EF9012"))
     }
 
+    @Test func globalStyleRoundTripPreservesSymbolsColorsTemplatesAndScope() throws {
+        var preferences = FileMintPreferences.default
+        preferences.monitoredFolderURLs = [URL(fileURLWithPath: "/Volumes/NAS/Work", isDirectory: true)]
+        preferences.menuIcons[MenuIconSlot.copyPaths.rawValue] = try icon("link")
+        preferences.templates[0].customMenuIcon = try icon("doc.text")
+        preferences.finderMenuIconStyle = .systemMonochrome
+
+        var restored = try FileMintPreferencesStore.decode(JSONEncoder().encode(preferences))
+        #expect(restored == preferences)
+        restored.finderMenuIconStyle = .colored
+        let colored = try FileMintPreferencesStore.decode(JSONEncoder().encode(restored))
+        #expect(colored.finderMenuIconStyle == .colored)
+        #expect(colored.menuIcons == preferences.menuIcons)
+        #expect(colored.templates == preferences.templates)
+        #expect(colored.monitoredFolderURLs == preferences.monitoredFolderURLs)
+    }
+
+    @Test func missingMalformedAndUnknownStylesKeepColoredAndOtherSettings() throws {
+        #expect(FileMintPreferences.default.finderMenuIconStyle == .colored)
+        var preferences = FileMintPreferences.default
+        preferences.launchAtLogin = false
+        preferences.appearance = .dark
+        preferences.menuIcons[MenuIconSlot.fileTools.rawValue] = try icon()
+        var object = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(preferences)) as? [String: Any])
+        object.removeValue(forKey: "finderMenuIconStyle")
+        let legacy = try FileMintPreferencesStore.decode(JSONSerialization.data(withJSONObject: object))
+        #expect(legacy == preferences)
+        for invalid: Any in [NSNull(), true, 42, "", "future-style", ["mode": "systemMonochrome"]] {
+            object["finderMenuIconStyle"] = invalid
+            let decoded = try FileMintPreferencesStore.decode(JSONSerialization.data(withJSONObject: object))
+            #expect(decoded == preferences)
+        }
+        for key in [FileMintTextKey.finderMenuIconStyle, .coloredMenuIcons, .systemMonochromeMenuIcons,
+                    .finderMenuIconStyleHint] {
+            #expect(FileMintStrings.text(key, language: .english) != key.rawValue)
+            #expect(FileMintStrings.text(key, language: .chinese) != key.rawValue)
+        }
+    }
+
     @Test func symbolAndColorsRoundTripWithPreferencesAndTemplate() throws {
         var preferences = FileMintPreferences.default
         let choice = try icon()

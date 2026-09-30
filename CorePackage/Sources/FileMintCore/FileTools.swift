@@ -81,7 +81,32 @@ public struct FileToolsPreferences: Codable, Equatable, Sendable {
     }
 }
 
+public enum FileToolTarget: Equatable, Sendable {
+    case selection([URL])
+    case directory(URL)
+}
+
 public enum FileToolsPolicy {
+    public static func target(directory: URL, selection: [URL], isItemMenu: Bool,
+                              isContainer: Bool) -> FileToolTarget? {
+        if isContainer { return .directory(directory) }
+        guard isItemMenu, !selection.isEmpty else { return nil }
+        return .selection(selection)
+    }
+
+    public static func availableTools(target: FileToolTarget,
+                                      preferences: FileMintPreferences) -> [FileTool] {
+        switch target {
+        case .selection(let selection):
+            return availableTools(selection: selection, isItemMenu: true, preferences: preferences)
+        case .directory(let directory):
+            guard directory.isFileURL,
+                  FolderScope.contains(directory, in: preferences.monitoredFolderURLs),
+                  preferences.fileTools.allows(.copyPaths) else { return [] }
+            return [.copyPaths]
+        }
+    }
+
     public static func availableTools(selection: [URL], isItemMenu: Bool,
                                       preferences: FileMintPreferences) -> [FileTool] {
         guard isItemMenu, !selection.isEmpty,
@@ -93,6 +118,15 @@ public enum FileToolsPolicy {
     public static func clipboardText(for tool: FileTool, selection: [URL]) -> String? {
         guard tool == .copyNames || tool == .copyPaths else { return nil }
         return selection.map { tool == .copyNames ? $0.lastPathComponent : $0.path }.joined(separator: "\n")
+    }
+
+    public static func clipboardText(for tool: FileTool, target: FileToolTarget) -> String? {
+        switch target {
+        case .selection(let selection):
+            return clipboardText(for: tool, selection: selection)
+        case .directory(let directory):
+            return tool == .copyPaths ? directory.path : nil
+        }
     }
 }
 

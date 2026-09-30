@@ -3,6 +3,7 @@ import SwiftUI
 
 /// The same settings surface runs in an isolated fixture without a preferences store.
 struct FileToolsSettingsView: View {
+    @Environment(\.finderMenuIconStyle) private var iconStyle
     @Binding var preferences: FileToolsPreferences
     let language: AppLanguage
     @Binding var menuIcons: [String: MenuIconCustomization]
@@ -53,8 +54,9 @@ struct FileToolsSettingsView: View {
         return VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 14) {
                 if let image = FileToolAppearance.image(for: tool, size: 18,
-                    customization: menuIcons[tool.menuIconSlot.rawValue]) {
-                    Image(nsImage: image).resizable().frame(width: 18, height: 18).accessibilityHidden(true)
+                    customization: menuIcons[tool.menuIconSlot.rawValue], style: iconStyle) {
+                    Image(nsImage: image).renderingMode(iconStyle == .systemMonochrome ? .template : .original)
+                        .resizable().foregroundStyle(.primary).frame(width: 18, height: 18).accessibilityHidden(true)
                         .saturation(enabled ? 1 : 0).opacity(enabled ? 1 : 0.5)
                 }
                 VStack(alignment: .leading, spacing: 5) {

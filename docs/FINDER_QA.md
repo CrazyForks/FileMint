@@ -141,8 +141,11 @@ For isolated settings regression checks, build with
 `bash scripts/build_file_tools_settings_harness.sh` and open its printed QA app.
 It uses the production settings view and icons with disposable preferences;
 `last-state.json` beside the app supports readback after disabled-control attempts.
-The QA toolbar changes only fixture language/appearance and exposes native icon
-menus. The initial checks reject missing, template or monochrome tool icons.
+The QA toolbar changes only fixture language/appearance/icon style and exposes
+native icon menus. `FileMintToolsUIQA --verify-icons` checks default and custom
+symbols, logo assets, template entries and unavailable-symbol fallbacks in both
+Colored and System Monochrome. It validates nonempty raster output and template
+status; default Colored tool icons must retain their palette.
 This fixture does not prove that Finder has loaded the new extension.
 
 - Start with old preferences: File & Folder Tools is off and New File is unchanged.
@@ -162,6 +165,16 @@ This fixture does not prove that Finder has loaded the new extension.
 - Set tools to all main, all submenu, and mixed placements: each enabled action
   appears exactly once, empty groups disappear, and New File remains unchanged.
   Move Selected Items Here has an independent placement and remains conditional.
+- In General → Appearance, switch Finder menu icons between Colored and System
+  Monochrome. Open a native main/submenu in light and dark mode; monochrome icons
+  must follow the host appearance and highlighted row while Colored keeps its
+  palette. Check New File's F logo, template choices, both tool modules, favorites
+  and Open with App; app entries retain their native icons.
+- Customize a symbol and colors, switch to monochrome, relaunch/import settings,
+  then switch back: symbol and color choices must survive. Icon editor previews
+  must match the style, with disabled color controls and an explanation in
+  monochrome; changing a symbol/reset remains available. Menus and settings
+  previews refresh after a save. An unavailable symbol falls back visibly.
 - Enable Permanent Delete using disposable fixtures only. Default confirmation
   has Cancel as the default; cancel preserves every item, confirm bypasses Trash.
   Silent mode skips that dialog; permissions and failures still surface. Verify
@@ -183,9 +196,16 @@ This fixture does not prove that Finder has loaded the new extension.
   readable at minimum window size in both languages and appearances.
 - Select files, folders and multiple items with Unicode/spaces/compound extensions;
   paste copied names and paths into a scratch document and compare exact lines.
-- Verify background, sidebar, toolbar and out-of-scope menus do not expose the
-  selection-tools submenu. A pending move may add its separate root action to an
-  in-scope background folder or one selected non-package directory.
+- Right-click the background of Downloads and a configured root folder: Copy
+  Paths copies that folder's full path, with its usual main/submenu placement.
+  A stale selection must not replace the background folder. Copy Names, Move,
+  Permanent Delete, AirDrop and Desktop Alias must not appear for the background.
+  Disable Copy Paths or the module, or remove the folder from scope before using
+  an old menu: it must not change the clipboard. Switch Finder windows/locations
+  after opening a menu: its captured background path must remain the target.
+- Verify sidebar, toolbar and out-of-scope menus do not expose selection tools
+  or background Copy Paths. A pending move may add its separate root action to
+  an in-scope background folder or one selected non-package directory.
 - Open menus in two windows and execute the older one: captured items must be used.
 - Check Chinese/English at minimum settings size, keyboard navigation and light/dark.
 - Select a file, image, script, App bundle, folder, symlink and multiple items;

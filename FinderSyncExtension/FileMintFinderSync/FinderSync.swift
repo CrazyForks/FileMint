@@ -34,7 +34,7 @@ final class FinderSync: FIFinderSync {
         }
         func menuIcon(_ slot: MenuIconSlot) -> NSImage? {
             FileToolAppearance.image(for: slot, customization: preferences.menuIcons[slot.rawValue],
-                defaultBundle: Bundle(for: Self.self))
+                defaultBundle: Bundle(for: Self.self), style: preferences.finderMenuIconStyle)
         }
         let target = FIFinderSyncController.default().targetedURL()
         let isContainer = menuKind == .contextualMenuForContainer
@@ -70,7 +70,7 @@ final class FinderSync: FIFinderSync {
         for (index, template) in templates.enumerated() {
             let title = "\(FileMintStrings.templateDisplayName(for: template, language: language)) (.\(template.fileExtension))"
             let item = NSMenuItem(title: title, action: #selector(createFile(_:)), keyEquivalent: "")
-            item.image = FileToolAppearance.image(for: template)
+            item.image = FileToolAppearance.image(for: template, style: preferences.finderMenuIconStyle)
             item.tag = tags[index + 1]
             creationMenu.addItem(item)
         }
@@ -98,8 +98,11 @@ final class FinderSync: FIFinderSync {
             // Root-level entry; Finder owns placement relative to system rows.
             moveHereItem = item
         }
-        let tools = FileToolsPolicy.availableTools(selection: selection,
-            isItemMenu: menuKind == .contextualMenuForItems, preferences: preferences)
+        let fileToolTarget = FileToolsPolicy.target(directory: directory, selection: selection,
+            isItemMenu: menuKind == .contextualMenuForItems, isContainer: isContainer)
+        let tools = fileToolTarget.map {
+            FileToolsPolicy.availableTools(target: $0, preferences: preferences)
+        } ?? []
         let layout = FileToolsMenuLayout(tools: tools, hasMoveDestination: moveHereItem != nil,
                                          preferences: preferences.fileTools)
         let toolsMenu = NSMenu(title: text(.fileTools))
@@ -109,9 +112,11 @@ final class FinderSync: FIFinderSync {
                 toolsMenu.addItem(moveHereItem)
             }
         }
-        let toolTags = actions.register(tools.map {
-            FileMenuAction(directory: directory, tool: $0, selection: selection)
-        })
+        let toolTags = fileToolTarget.map { target in
+            actions.register(tools.map {
+                FileMenuAction(directory: directory, tool: $0, target: target)
+            })
+        } ?? []
         for (index, tool) in tools.enumerated() {
             let item = NSMenuItem(title: text(tool.title), action: #selector(performFileTool(_:)), keyEquivalent: "")
             item.image = menuIcon(tool.menuIconSlot)
@@ -175,7 +180,7 @@ final class FinderSync: FIFinderSync {
                                           preferences: preferences) {
             let item = NSMenuItem(title: FavoriteText.add.text(language),
                 action: #selector(performFavorite(_:)), keyEquivalent: "")
-            item.image = FileToolAppearance.favoriteImage
+            item.image = FileToolAppearance.image(for: .favoriteLocations, style: preferences.finderMenuIconStyle)
             item.tag = actions.register([FileMenuAction(directory: directory,
                 favoriteAction: .add, selection: selection)])[0]
             menu.addItem(item)
@@ -189,7 +194,7 @@ final class FinderSync: FIFinderSync {
                     ? "\(favorite.name) — \(favorite.url.deletingLastPathComponent().lastPathComponent)"
                     : favorite.name
                 let item = NSMenuItem(title: title, action: #selector(performFavorite(_:)), keyEquivalent: "")
-                item.image = FileToolAppearance.favoriteImage
+                item.image = FileToolAppearance.image(for: .favoriteLocations, style: preferences.finderMenuIconStyle)
                 item.tag = actions.register([FileMenuAction(directory: directory,
                     favoriteAction: .locate(favorite.id))])[0]
                 submenu.addItem(item)
@@ -244,12 +249,12 @@ final class FinderSync: FIFinderSync {
     }
 
     @objc private func performFileTool(_ item: NSMenuItem) {
-        guard let action = actions.take(item.tag), let tool = action.tool else { return }
+        guard let action = actions.take(item.tag), let tool = action.tool,
+              let target = action.fileToolTarget else { return }
         let selection = action.selection
         Task { @MainActor in
             let preferences = FileMintPreferencesStore().load()
-            guard FileToolsPolicy.availableTools(selection: selection, isItemMenu: true,
-                preferences: preferences).contains(tool) else { return }
+            guard FileToolsPolicy.availableTools(target: target, preferences: preferences).contains(tool) else { return }
             if tool == .move {
                 FinderActions.shared.perform(.prepare(selection))
                 return
@@ -266,7 +271,7 @@ final class FinderSync: FIFinderSync {
                 FinderActions.shared.perform(.airDrop(selection))
                 return
             }
-            guard let value = FileToolsPolicy.clipboardText(for: tool, selection: selection) else { return }
+            guard let value = FileToolsPolicy.clipboardText(for: tool, target: target) else { return }
             let pasteboard = NSPasteboard.general
             pasteboard.clearContents()
             guard pasteboard.setString(value, forType: .string) else {

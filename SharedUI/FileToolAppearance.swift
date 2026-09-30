@@ -1,19 +1,21 @@
 import AppKit
 import FileMintCore
 
-/// One native symbol palette for settings and both Finder menu locations.
+/// One native symbol renderer for settings and both Finder menu locations.
 enum FileToolAppearance {
     static let openWithSymbol = "square.stack.3d.up"
     private static let applicationIcons = ApplicationIconCache()
 
     static func image(for tool: FileTool, size: CGFloat = 16,
-                      customization: MenuIconCustomization? = nil) -> NSImage? {
-        image(for: tool.menuIconSlot, customization: customization, size: size)
+                      customization: MenuIconCustomization? = nil,
+                      style: FinderMenuIconStyle = .colored) -> NSImage? {
+        image(for: tool.menuIconSlot, customization: customization, size: size, style: style)
     }
 
     static func image(for tool: ResourceTool, size: CGFloat = 16,
-                      customization: MenuIconCustomization? = nil) -> NSImage? {
-        image(for: tool.menuIconSlot, customization: customization, size: size)
+                      customization: MenuIconCustomization? = nil,
+                      style: FinderMenuIconStyle = .colored) -> NSImage? {
+        image(for: tool.menuIconSlot, customization: customization, size: size, style: style)
     }
 
     static var toolsImage: NSImage? {
@@ -37,29 +39,31 @@ enum FileToolAppearance {
     }
 
     static func image(for slot: MenuIconSlot, customization: MenuIconCustomization? = nil,
-                      size: CGFloat = 16, defaultBundle: Bundle? = nil) -> NSImage? {
-        if let customization, let chosen = image(for: customization, size: size) {
+                      size: CGFloat = 16, defaultBundle: Bundle? = nil,
+                      style: FinderMenuIconStyle = .colored) -> NSImage? {
+        if let customization, let chosen = image(for: customization, size: size, style: style) {
             return chosen
         }
         if (slot == .newFile || slot == .customNewFile), let bundle = defaultBundle,
-           let logo = bundle.image(forResource: "FinderRootMenuIcon")?.copy() as? NSImage {
+           let logo = bundle.image(forResource: style == .colored ? "FinderRootMenuIcon" : "FinderMenuIcon")?.copy() as? NSImage {
             logo.size = NSSize(width: size, height: size)
-            logo.isTemplate = false
+            logo.isTemplate = style == .systemMonochrome
             return logo
         }
         let colors = defaultColors(for: slot)
-        return image(slot.defaultSymbolName, palette: [colors.0, colors.1], size: size)
+        return image(slot.defaultSymbolName, palette: [colors.0, colors.1], size: size, style: style)
     }
 
-    static func image(for template: FileTemplate, size: CGFloat = 16) -> NSImage? {
+    static func image(for template: FileTemplate, size: CGFloat = 16,
+                      style: FinderMenuIconStyle = .colored) -> NSImage? {
         if let custom = template.customMenuIcon,
-           let chosen = image(for: custom, size: size) {
+           let chosen = image(for: custom, size: size, style: style) {
             return chosen
         }
         let colors = defaultColors(for: template)
         let symbol = TemplateCatalog.defaultMenuSymbol(forSuffix: template.fileExtension)
-        return image(symbol, palette: [colors.0, colors.1], size: size)
-            ?? image("doc", palette: [colors.0, colors.1], size: size)
+        return image(symbol, palette: [colors.0, colors.1], size: size, style: style)
+            ?? image("doc", palette: [colors.0, colors.1], size: size, style: style)
     }
 
     static func defaultColors(for slot: MenuIconSlot) -> (NSColor, NSColor) {
@@ -100,9 +104,10 @@ enum FileToolAppearance {
         applicationIcons.image(at: url, size: size)
     }
 
-    static func image(for customization: MenuIconCustomization, size: CGFloat = 16) -> NSImage? {
+    static func image(for customization: MenuIconCustomization, size: CGFloat = 16,
+                      style: FinderMenuIconStyle = .colored) -> NSImage? {
         image(customization.symbolName,
-              palette: [color(customization.primaryHex), color(customization.secondaryHex)], size: size)
+              palette: [color(customization.primaryHex), color(customization.secondaryHex)], size: size, style: style)
     }
 
     private static func color(_ hex: String) -> NSColor {
@@ -114,14 +119,15 @@ enum FileToolAppearance {
         return NSColor(srgbRed: channel(0), green: channel(2), blue: channel(4), alpha: 1)
     }
 
-    private static func image(_ symbol: String, palette: [NSColor], size: CGFloat = 16) -> NSImage? {
+    private static func image(_ symbol: String, palette: [NSColor], size: CGFloat = 16,
+                              style: FinderMenuIconStyle = .colored) -> NSImage? {
         let configuration = NSImage.SymbolConfiguration(pointSize: size, weight: .regular)
-            .applying(NSImage.SymbolConfiguration(paletteColors: palette))
+            .applying(style == .systemMonochrome ? .preferringMonochrome() : .init(paletteColors: palette))
         guard let source = NSImage(systemSymbolName: symbol, accessibilityDescription: nil),
               let image = source.withSymbolConfiguration(configuration) else { return nil }
         image.size = NSSize(width: size, height: size)
-        // Finder must retain the palette, including when an item is highlighted.
-        image.isTemplate = false
+        // Finder colors template images for its appearance and highlighted rows.
+        image.isTemplate = style == .systemMonochrome
         return image
     }
 }

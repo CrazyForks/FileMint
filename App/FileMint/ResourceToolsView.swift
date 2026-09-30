@@ -3,9 +3,11 @@ import FileMintCore
 
 @ViewBuilder
 private func resourceToolIcon(_ tool: ResourceTool, size: CGFloat,
-                              customization: MenuIconCustomization? = nil) -> some View {
-    if let image = FileToolAppearance.image(for: tool, size: size, customization: customization) {
-        Image(nsImage: image).resizable().interpolation(.high).scaledToFit()
+                              customization: MenuIconCustomization? = nil,
+                              style: FinderMenuIconStyle = .colored) -> some View {
+    if let image = FileToolAppearance.image(for: tool, size: size, customization: customization, style: style) {
+        Image(nsImage: image).renderingMode(style == .systemMonochrome ? .template : .original)
+            .resizable().interpolation(.high).scaledToFit().foregroundStyle(.primary)
     } else {
         Image(systemName: tool.symbol).font(.system(size: size, weight: .regular))
     }
@@ -92,6 +94,7 @@ struct ResourceToolsPane: View {
 }
 
 private struct ResourceToolCard: View {
+    @Environment(\.finderMenuIconStyle) private var iconStyle
     let tool: ResourceTool
     let language: AppLanguage
     let customization: MenuIconCustomization?
@@ -100,7 +103,8 @@ private struct ResourceToolCard: View {
     var body: some View {
         Button(action: action) {
             HStack(alignment: .top, spacing: 13) {
-                resourceToolIcon(tool, size: 21, customization: customization).frame(width: 25, height: 25).padding(.top, 2)
+                resourceToolIcon(tool, size: 21, customization: customization, style: iconStyle)
+                    .frame(width: 25, height: 25).padding(.top, 2)
                 VStack(alignment: .leading, spacing: 7) {
                     Text(tool.title(language).replacingOccurrences(of: "…", with: "")).font(.system(size: 13, weight: .medium))
                     Text(tool.summary(language)).font(.system(size: 11)).foregroundStyle(.secondary)

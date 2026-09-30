@@ -68,6 +68,16 @@ struct GeneralPane: View {
                         }.settingsMenu().accessibilityIdentifier("settings.language")
                             .onChange(of: model.preferences.language) { _ in model.save() }
                     }
+                    Divider()
+                    PreferenceRow(title: model.text(.finderMenuIconStyle), detail: model.text(.finderMenuIconStyleHint)) {
+                        FinderMenuIconStylePicker(selection: Binding(
+                            get: { model.preferences.finderMenuIconStyle },
+                            set: { value in
+                                let previous = model.preferences.finderMenuIconStyle
+                                model.preferences.finderMenuIconStyle = value
+                                if !model.save() { model.preferences.finderMenuIconStyle = previous }
+                            }), language: model.preferences.language)
+                    }
                 }
                 SettingsSection(title: model.text(.startupAndAccess)) {
                     PreferenceRow(title: model.text(.launchAtLogin), detail: InterfaceText.launchHint.text(model.preferences.language)) {

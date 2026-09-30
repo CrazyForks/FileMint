@@ -24,12 +24,17 @@ Load for: Optional Finder file/folder actions, selection snapshots and tool swit
   but its placement and secondary options are disabled. Re-enabling restores
   all choices without resetting them. Move and deletion options stay in their
   respective sections. Presentation owns the shared settings/Finder icon palette.
-- Tools appear only for selected items in configured folder scope. Do not use a
-  background, toolbar or sidebar menu's stale selection. All selected URLs must
-  be local file URLs in scope; never silently operate on a subset.
-- Capture the selection in Finder's reported order when building the menu. Menu
-  actions use that immutable snapshot, not the later window/selection. Recheck
-  current module, child and scope preferences before executing an old menu item.
+- Selection tools appear only for selected items in configured folder scope.
+  Copy Paths also appears when right-clicking a folder's background in scope,
+  including a configured root, and copies that current folder's path. No other
+  selection tool uses the background directory. Do not use a background, toolbar
+  or sidebar menu's stale selection. All selected URLs must be local file URLs
+  in scope; never silently operate on a subset.
+- Capture the selection in Finder's reported order, or the background container
+  directory for Copy Paths, when building the menu. Menu actions use that
+  immutable target, not the later window/selection. Recheck current module,
+  child and scope preferences before executing an old menu item. Background
+  Copy Paths keeps the existing switch, icon and menu-placement preference.
 - Copy Names writes each last path component including its extension; Copy Paths
   writes each full filesystem path. Multiple values are joined by one newline,
   with no trailing newline. Preserve Unicode, spaces and literal characters.

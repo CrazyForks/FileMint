@@ -3,6 +3,29 @@
 Checked on 2026-09-14, macOS 26.6.2, Apple silicon. Minimum deployment target:
 macOS 13. Release bundles contain arm64 and x86_64 executables.
 
+## Background Copy Paths and global icon style QA — 2026-09-30
+
+Checked on macOS 27.2, Apple silicon, `0409f1a` plus the uncommitted
+[Finder path/icon-style worktree](tasks/2026-09-30-finder-path-and-icon-style.md).
+
+- `make verify` passed 178 Core tests, 14 image tests, 5 public Harness cases,
+  10 CLI regressions and the remaining offline checks. The unsigned Release
+  app and Finder extension built. `git diff --check` passed. Local evidence is
+  under `build/qa-2026-09-30-issues.DTad4B/` (ignored).
+- The isolated production renderer checked 22 icon slots and 14 built-in
+  templates in Colored and System Monochrome, including custom symbols,
+  unavailable-symbol fallback and both F logo assets. Raster output was visible,
+  Colored retained color and Monochrome had no colored pixels and was templated.
+- CUA observed dark glyphs in the light monochrome settings preview and light
+  glyphs in the dark preview. Monochrome disabled both color wells while allowing
+  a symbol edit. Switching back restored the saved `folder.fill` symbol and
+  `#00C8B3` / `#0088FF` colors and enabled both wells. Chinese/English style options
+  appeared in the native picker. The QA app was closed after the checks.
+- The fixture used disposable preferences, no user file operation and no general
+  clipboard writes. Installed FileMint/Finder was not replaced; real Finder
+  background clipboard execution, highlighted menu colors and NAS authorization
+  remain separate pending checks. No publication occurred.
+
 ## FileMint 0.6.2 release — 2026-09-29
 
 The arm64/macOS 13+ [0.6.2 release](RELEASE_VERIFICATION_0.6.2.md) passed local Developer ID signing, Apple notarization/stapling, mounted-DMG and appcast checks. An isolated signed sandbox Sparkle fixture replaced and relaunched build 1 with build 2 at the same path; the published DMG, checksum and appcast were downloaded and compared byte for byte. Release verification, CI and website deployment passed. This was not an installed FileMint/Finder test or a public-feed upgrade from 0.6.1.

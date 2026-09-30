@@ -72,6 +72,11 @@ Part of the [FileMint SPEC](../SPEC.md). This file owns the behavior below; othe
   established defaults without changing other settings. The app alone writes
   them; Finder reads the cached settings and refreshes after a save. Unsupported
   symbols render the default icon instead of an empty menu image.
+- The global Finder menu icon style persists independently of icon overrides.
+  New installs and missing, malformed or unknown saved style values use Colored.
+  System Monochrome survives relaunch and settings import, refreshes Finder's
+  cached preferences after saving and preserves all saved symbols and colors so
+  switching back restores them. A failed save restores the previous style.
 - Limit the persisted settings document to 32 MiB. A missing file initializes
   defaults; a present corrupt or oversized file leaves Finder scope empty and is
   preserved for explicit recovery instead of being overwritten during startup.
