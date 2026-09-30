@@ -1,3 +1,33 @@
+# FileMint 0.6.4
+
+## 修复与改进
+
+- **单色图标适配系统明暗主题**：修复深色 Finder 菜单中单色图标仍显示为黑色的问题。新建文件的 F 图标、模板和工具菜单在系统深色主题下显示白色，浅色主题下显示黑色。
+- **主题切换自动生效**：切换系统明暗主题后，下次打开 Finder 菜单即使用对应的单色图标，无需重启 FileMint 或 Finder。
+- **保留彩色配色**：彩色模式继续使用默认或已保存的配色；切换图标模式保留原有符号和颜色设置。
+
+## 系统要求与升级
+
+0.6.4 正式安装包面向运行 macOS 13 或更新版本的 M 系列 Mac，不含 Intel 代码。运行 0.6.3 的 M 系列用户可通过“关于 → 检查更新 → 更新并重启”升级，已有模板和菜单设置会保留。
+
+0.5.7/0.5.8 用户仍需先手动安装 0.5.9 或更新版本一次，修复旧版自身无法修复的更新器签名权限问题。
+
+## Fixes and improvements
+
+- **Monochrome icons adapt to the system appearance**: Fixed black monochrome icons in dark Finder menus. The New File F logo, templates and tool menus now use white icons in the system's dark appearance and black icons in its light appearance.
+- **Theme changes apply automatically**: After changing the system appearance, the next opened Finder menu uses the matching monochrome icons without restarting FileMint or Finder.
+- **Saved colors are preserved**: Colored mode continues to use its default or saved palette. Switching icon styles preserves the existing symbols and color settings.
+
+## System requirements and upgrading
+
+The 0.6.4 stable installer targets M-series Macs running macOS 13 or later and contains no Intel code. M-series users on 0.6.3 can upgrade through **About → Check for Updates → Update and Restart**. Existing templates and menu settings are preserved.
+
+Versions 0.5.7/0.5.8 still require one manual installation of 0.5.9 or later to fix updater signing permissions that those versions cannot repair themselves.
+
+## 关联问题 / Related issue
+
+- [#5：系统单色风格没有适配深色模式](https://github.com/FileMintApp/FileMint/issues/5)
+
 # FileMint 0.6.3
 
 ## 新功能与改进
