@@ -3,6 +3,42 @@
 Checked on 2026-09-14, macOS 26.6.2, Apple silicon. Minimum deployment target:
 macOS 13. Release bundles contain arm64 and x86_64 executables.
 
+## Finder monochrome system appearance fix — 2026-09-30
+
+Checked on macOS 27.2, Apple silicon, `1dde45f` plus the uncommitted
+[monochrome appearance worktree](tasks/finder-monochrome-appearance.md).
+
+- Finder's own symbol/logo images now carry explicit white pixels for Dark Aqua
+  and black pixels for Aqua as non-template 1x/2x bitmaps. Each menu reads the
+  extension's effective appearance on the main thread; only the resolved tone
+  crosses to the callback. Settings previews retain native template behavior.
+- Final `make verify` passed 178 Core tests, 14 image tests, 5 public Harness
+  cases, 10 CLI regressions and the remaining offline checks. The unsigned App
+  and Finder extension built. `git diff --check` passed. Local logs/readback are
+  under `build/qa-2026-09-30-monochrome/` (ignored).
+- The isolated final production renderer checked 22 slots and 14 built-in
+  templates, including custom symbols, unavailable-symbol fallbacks and F logos.
+  In both bitmap scales and TIFF readback, visible dark-menu pixels were white
+  (each RGB channel > 0.98) and light-menu pixels black (each < 0.02). Transparency
+  and logical dimensions survived; menu output was non-template and Colored
+  images were preserved. This exercises image transfer without relying on
+  template metadata; it does not establish Finder's internal transfer format.
+- A local candidate signed with the existing Developer ID identity passed nested
+  signatures, arm64 bundle and sandbox-entitlement checks. It was temporarily
+  installed at `/Applications/FileMint.app`; `pluginkit` and the running process
+  identified the changed extension at that path. CUA observed the real Finder
+  main/submenus in the owned QA folder. The user then completed visual acceptance
+  and confirmed: “不用截图，我已经完成了查看验收，实现的很棒”. Additional screenshot
+  attempts stopped. This visual result is user-reported; the agent did not obtain
+  a floating-menu image proving every individual row's colors.
+- The original App, extension and preference bytes were restored and checked
+  against their saved SHA-256 values. System appearance was confirmed back at
+  Light, with one enabled FileMint extension at the original install path. The
+  owned Finder QA window and isolated QA app were closed. Restoration and user
+  confirmation are recorded under the local evidence directory's `native/`.
+- No issue reply or publication occurred. This local candidate was not a newly
+  notarized release, and macOS 13 runtime/clean-install trust were not tested.
+
 ## FileMint 0.6.3 release — 2026-09-30
 
 The user selected the standard publication workflow. The arm64/macOS 13+

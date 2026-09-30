@@ -145,7 +145,10 @@ The QA toolbar changes only fixture language/appearance/icon style and exposes
 native icon menus. `FileMintToolsUIQA --verify-icons` checks default and custom
 symbols, logo assets, template entries and unavailable-symbol fallbacks in both
 Colored and System Monochrome. It validates nonempty raster output and template
-status; default Colored tool icons must retain their palette.
+status; default Colored tool icons must retain their palette. Monochrome menu
+images also need readable light/dark pixels at 1x and 2x after a TIFF round trip
+that discards template metadata. The fixture's native menus use the production
+menu-image renderer and an explicit fixture appearance.
 This fixture does not prove that Finder has loaded the new extension.
 
 - Start with old preferences: File & Folder Tools is off and New File is unchanged.
@@ -170,6 +173,11 @@ This fixture does not prove that Finder has loaded the new extension.
   must follow the host appearance and highlighted row while Colored keeps its
   palette. Check New File's F logo, template choices, both tool modules, favorites
   and Open with App; app entries retain their native icons.
+- With FileMint's own window theme forced to the opposite appearance, change the
+  system theme and reopen Finder's main/submenus without relaunching either app.
+  Their monochrome symbols and F logo must follow the new system theme and remain
+  readable on highlighted rows. This requires the changed signed extension;
+  the fixture's theme switch tests only the isolated native renderer.
 - Customize a symbol and colors, switch to monochrome, relaunch/import settings,
   then switch back: symbol and color choices must survive. Icon editor previews
   must match the style, with disabled color controls and an explanation in

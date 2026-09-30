@@ -102,12 +102,17 @@ Part of the [FileMint SPEC](../SPEC.md). This file owns the behavior below; othe
   icons. Their icons are not customizable.
 - Finder Menu Icons is one global style for FileMint's own menu symbols, template
   entries and logo. Colored retains the existing palette. System Monochrome uses
-  native monochrome SF Symbols and template images, letting Finder choose colors
-  for its current light/dark appearance and highlighted rows. The default New
+  native monochrome SF Symbols and the existing F silhouette. Each Finder menu
+  carries non-template monochrome bitmaps resolved from the extension's current
+  system appearance: white in dark menus and black in light menus, including the
+  F logo and template choices. Their legibility must survive image-only transfer
+  and highlighted rows, without relying on Finder to tint template metadata. Rebuild from the
+  current appearance when opening a menu; a system theme change needs no relaunch
+  and the main app's window theme never overrides Finder's theme. The default New
   File logo uses the existing monochrome F silhouette. Configured App entries
   retain their native application icons; Finder toolbar and menu-bar glyphs keep
   their existing template behavior. Style changes never alter targets or labels.
-  Icon editor and settings previews follow the global style; color controls are
+  Icon editor and settings previews use native template tinting and follow the global style; color controls are
   disabled in monochrome mode with guidance that saved colors return in Colored.
   Users may still change a symbol or reset an override while in monochrome mode.
 - App logo: a distinctive folded-paper F in fresh mint on a warm porcelain

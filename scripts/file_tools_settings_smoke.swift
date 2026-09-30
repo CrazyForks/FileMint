@@ -39,6 +39,49 @@ struct FileToolsSettingsSmoke: App {
 }
 
 private func verifyIconStyles() {
+    func checkMenuPixels(_ image: NSImage, dark: Bool, label: String) {
+        guard let raster = image.cgImage(forProposedRect: nil, context: nil, hints: nil)
+        else { fatalError("Missing transferred menu image: \(label)") }
+        let pixels = NSBitmapImageRep(cgImage: raster)
+        var visible = 0
+        for y in 0..<pixels.pixelsHigh {
+            for x in 0..<pixels.pixelsWide {
+                guard let color = pixels.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB),
+                      color.alphaComponent > 0.5 else { continue }
+                visible += 1
+                let channels = [color.redComponent, color.greenComponent, color.blueComponent]
+                precondition(channels.max()! - channels.min()! < 0.03, "Menu icon gained color: \(label)")
+                precondition(dark ? channels.min()! > 0.98 : channels.max()! < 0.02,
+                             "Unreadable \(dark ? "dark" : "light") menu pixels: \(label)")
+            }
+        }
+        precondition(visible > 0, "Empty transferred menu icon: \(label)")
+        precondition(visible < pixels.pixelsHigh * pixels.pixelsWide, "Menu icon lost transparency: \(label)")
+    }
+    func checkFinderTransfer(_ source: NSImage, label: String) {
+        for dark in [false, true] {
+            let appearance = NSAppearance(named: dark ? .darkAqua : .aqua)!
+            let foreground = MonochromeMenuForeground(appearance: appearance)
+            guard let image = FileToolAppearance.finderMenuImage(source, foreground: foreground),
+                  !image.isTemplate, source.isTemplate,
+                  image.size == source.size, let tiff = image.tiffRepresentation,
+                  let transferred = NSImage(data: tiff) else { fatalError("Missing Finder menu image: \(label)") }
+            let bitmaps = image.representations.compactMap { $0 as? NSBitmapImageRep }
+            precondition(bitmaps.count == 2, "Missing 1x/2x menu representations: \(label)")
+            for (index, bitmap) in bitmaps.enumerated() {
+                let scale = index + 1
+                precondition(bitmap.pixelsWide == Int(source.size.width) * scale &&
+                             bitmap.pixelsHigh == Int(source.size.height) * scale,
+                             "Incorrect menu pixel size: \(label)")
+                let representation = NSImage(size: source.size)
+                representation.addRepresentation(bitmap)
+                checkMenuPixels(representation, dark: dark, label: "\(label)-\(scale)x")
+            }
+            precondition(!transferred.isTemplate, "TIFF fixture must exercise loss of template metadata")
+            precondition(transferred.size == source.size, "Transferred menu size changed: \(label)")
+            checkMenuPixels(transferred, dark: dark, label: "\(label)-TIFF")
+        }
+    }
     func check(_ image: NSImage?, style: FinderMenuIconStyle, label: String) {
         guard let image, image.isTemplate == (style == .systemMonochrome),
               let raster = image.cgImage(forProposedRect: nil, context: nil, hints: nil)
@@ -57,6 +100,12 @@ private func verifyIconStyles() {
         }
         precondition(visible, "Empty icon: \(label)")
         precondition(style == .colored ? hasColor : !hasColor, "Unexpected icon colors: \(label)")
+        if style == .systemMonochrome { checkFinderTransfer(image, label: label) }
+        else {
+            let foreground = MonochromeMenuForeground(appearance: NSAppearance(named: .darkAqua)!)
+            precondition(FileToolAppearance.finderMenuImage(image, foreground: foreground) === image,
+                         "Colored image was replaced: \(label)")
+        }
     }
     precondition(Bundle.main.image(forResource: "FinderMenuIcon") != nil)
     precondition(Bundle.main.image(forResource: "FinderRootMenuIcon") != nil)
@@ -81,11 +130,13 @@ private func verifyIconStyles() {
     }
     if let directory = Bundle.main.object(forInfoDictionaryKey: "FixturePath") as? String {
         let result = ["passed": true, "styles": FinderMenuIconStyle.allCases.map(\.rawValue),
-                      "slots": MenuIconSlot.allCases.count, "templates": TemplateCatalog.builtInTemplates.count] as [String: Any]
+                      "slots": MenuIconSlot.allCases.count, "templates": TemplateCatalog.builtInTemplates.count,
+                      "menuAppearances": ["aqua", "darkAqua"], "menuScales": [1, 2],
+                      "menuTransfer": "TIFF", "menuImagesAreTemplates": false] as [String: Any]
         let data = try! JSONSerialization.data(withJSONObject: result, options: [.sortedKeys])
         try! data.write(to: URL(fileURLWithPath: directory).appendingPathComponent("icon-rendering-checks.json"))
     }
-    print("PASS native colored/monochrome icons, custom symbols, logo and unavailable-symbol fallback")
+    print("PASS native icon styles and light/dark 1x/2x monochrome menu pixels after TIFF transfer")
 }
 
 private struct FixtureView: View {
@@ -113,7 +164,8 @@ private struct FixtureView: View {
                 }.frame(width: 180)
                 Toggle("QA dark", isOn: $dark).toggleStyle(.checkbox)
                 Spacer()
-                NativeToolMenu(language: language, menuIcons: menuIcons, style: iconStyle).frame(width: 125, height: 24)
+                NativeToolMenu(language: language, menuIcons: menuIcons, style: iconStyle, dark: dark)
+                    .frame(width: 125, height: 24)
             }.padding(10)
             PreferenceRow(title: text(.finderMenuIconStyle)) {
                 FinderMenuIconStylePicker(selection: $iconStyle, language: language)
@@ -159,12 +211,19 @@ private struct NativeToolMenu: NSViewRepresentable {
     let language: AppLanguage
     let menuIcons: [String: MenuIconCustomization]
     let style: FinderMenuIconStyle
+    let dark: Bool
 
     func makeNSView(context: Context) -> NSPopUpButton {
         NSPopUpButton(frame: .zero, pullsDown: true)
     }
 
     func updateNSView(_ button: NSPopUpButton, context: Context) {
+        let appearance = NSAppearance(named: dark ? .darkAqua : .aqua)!
+        button.appearance = appearance
+        let foreground = style == .systemMonochrome ? MonochromeMenuForeground(appearance: appearance) : nil
+        func menuImage(_ image: NSImage?) -> NSImage? {
+            FileToolAppearance.finderMenuImage(image, foreground: foreground)
+        }
         let menu = NSMenu()
         menu.autoenablesItems = false
         menu.addItem(withTitle: "QA menu icons", action: nil, keyEquivalent: "")
@@ -172,20 +231,20 @@ private struct NativeToolMenu: NSViewRepresentable {
             for tool in FileTool.allCases {
                 let item = NSMenuItem(title: FileMintStrings.text(tool.title, language: language),
                                       action: nil, keyEquivalent: "")
-                item.image = FileToolAppearance.image(for: tool,
-                    customization: menuIcons[tool.menuIconSlot.rawValue], style: style)
+                item.image = menuImage(FileToolAppearance.image(for: tool,
+                    customization: menuIcons[tool.menuIconSlot.rawValue], style: style))
                 menu.addItem(item)
             }
             let item = NSMenuItem(title: FileMintStrings.text(.moveSelectedHere, language: language),
                                   action: nil, keyEquivalent: "")
-            item.image = FileToolAppearance.image(for: .moveHere,
-                customization: menuIcons[MenuIconSlot.moveHere.rawValue], style: style)
+            item.image = menuImage(FileToolAppearance.image(for: .moveHere,
+                customization: menuIcons[MenuIconSlot.moveHere.rawValue], style: style))
             menu.addItem(item)
         }
         addTools(to: menu)
         let root = NSMenuItem(title: "QA submenu", action: nil, keyEquivalent: "")
-        root.image = FileToolAppearance.image(for: .fileTools,
-            customization: menuIcons[MenuIconSlot.fileTools.rawValue], style: style)
+        root.image = menuImage(FileToolAppearance.image(for: .fileTools,
+            customization: menuIcons[MenuIconSlot.fileTools.rawValue], style: style))
         let submenu = NSMenu()
         submenu.autoenablesItems = false
         addTools(to: submenu)

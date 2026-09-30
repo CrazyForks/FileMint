@@ -110,6 +110,34 @@ enum FileToolAppearance {
               palette: [color(customization.primaryHex), color(customization.secondaryHex)], size: size, style: style)
     }
 
+    /// Give Finder explicit black/white pixels that do not rely on host template tinting.
+    /// Settings keep the original template; configured application icons bypass this.
+    static func finderMenuImage(_ source: NSImage?, foreground: MonochromeMenuForeground?) -> NSImage? {
+        guard let source, source.isTemplate, let foreground else { return source }
+        let size = source.size
+        guard size.width > 0, size.height > 0 else { return source }
+        let result = NSImage(size: size)
+        let bounds = NSRect(origin: .zero, size: size)
+        for scale: CGFloat in [1, 2] {
+            guard let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil,
+                pixelsWide: Int(ceil(size.width * scale)), pixelsHigh: Int(ceil(size.height * scale)),
+                bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0),
+                let context = NSGraphicsContext(bitmapImageRep: bitmap) else { return source }
+            bitmap.size = size
+            context.cgContext.scaleBy(x: scale, y: scale)
+            NSGraphicsContext.saveGraphicsState()
+            NSGraphicsContext.current = context
+            source.draw(in: bounds, from: .zero, operation: .copy, fraction: 1)
+            foreground.color.setFill()
+            bounds.fill(using: .sourceIn)
+            NSGraphicsContext.restoreGraphicsState()
+            result.addRepresentation(bitmap)
+        }
+        result.isTemplate = false
+        return result
+    }
+
     private static func color(_ hex: String) -> NSColor {
         let digits = Array(hex.dropFirst().utf8)
         func channel(_ offset: Int) -> CGFloat {
@@ -126,9 +154,22 @@ enum FileToolAppearance {
         guard let source = NSImage(systemSymbolName: symbol, accessibilityDescription: nil),
               let image = source.withSymbolConfiguration(configuration) else { return nil }
         image.size = NSSize(width: size, height: size)
-        // Finder colors template images for its appearance and highlighted rows.
+        // Native previews use template tinting; Finder also receives resolved pixels.
         image.isTemplate = style == .systemMonochrome
         return image
+    }
+}
+
+/// Only the resolved black/white tone crosses from the main thread to Finder's callback.
+struct MonochromeMenuForeground: Sendable {
+    private let tone: CGFloat
+
+    init(appearance: NSAppearance) {
+        tone = appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? 1 : 0
+    }
+
+    var color: NSColor {
+        NSColor(white: tone, alpha: 1)
     }
 }
 

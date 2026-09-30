@@ -29,12 +29,17 @@ final class FinderSync: FIFinderSync {
     override func menu(for menuKind: FIMenuKind) -> NSMenu? {
         let preferences = cachedPreferences.snapshot()
         let language = preferences.language.resolved()
+        let foreground = preferences.finderMenuIconStyle == .systemMonochrome
+            ? Self.currentMenuForeground() : nil
+        func menuImage(_ image: NSImage?) -> NSImage? {
+            FileToolAppearance.finderMenuImage(image, foreground: foreground)
+        }
         func text(_ key: FileMintTextKey) -> String {
             FileMintStrings.text(key, language: language)
         }
         func menuIcon(_ slot: MenuIconSlot) -> NSImage? {
-            FileToolAppearance.image(for: slot, customization: preferences.menuIcons[slot.rawValue],
-                defaultBundle: Bundle(for: Self.self), style: preferences.finderMenuIconStyle)
+            menuImage(FileToolAppearance.image(for: slot, customization: preferences.menuIcons[slot.rawValue],
+                defaultBundle: Bundle(for: Self.self), style: preferences.finderMenuIconStyle))
         }
         let target = FIFinderSyncController.default().targetedURL()
         let isContainer = menuKind == .contextualMenuForContainer
@@ -70,7 +75,7 @@ final class FinderSync: FIFinderSync {
         for (index, template) in templates.enumerated() {
             let title = "\(FileMintStrings.templateDisplayName(for: template, language: language)) (.\(template.fileExtension))"
             let item = NSMenuItem(title: title, action: #selector(createFile(_:)), keyEquivalent: "")
-            item.image = FileToolAppearance.image(for: template, style: preferences.finderMenuIconStyle)
+            item.image = menuImage(FileToolAppearance.image(for: template, style: preferences.finderMenuIconStyle))
             item.tag = tags[index + 1]
             creationMenu.addItem(item)
         }
@@ -180,7 +185,7 @@ final class FinderSync: FIFinderSync {
                                           preferences: preferences) {
             let item = NSMenuItem(title: FavoriteText.add.text(language),
                 action: #selector(performFavorite(_:)), keyEquivalent: "")
-            item.image = FileToolAppearance.image(for: .favoriteLocations, style: preferences.finderMenuIconStyle)
+            item.image = menuImage(FileToolAppearance.image(for: .favoriteLocations, style: preferences.finderMenuIconStyle))
             item.tag = actions.register([FileMenuAction(directory: directory,
                 favoriteAction: .add, selection: selection)])[0]
             menu.addItem(item)
@@ -194,7 +199,7 @@ final class FinderSync: FIFinderSync {
                     ? "\(favorite.name) — \(favorite.url.deletingLastPathComponent().lastPathComponent)"
                     : favorite.name
                 let item = NSMenuItem(title: title, action: #selector(performFavorite(_:)), keyEquivalent: "")
-                item.image = FileToolAppearance.image(for: .favoriteLocations, style: preferences.finderMenuIconStyle)
+                item.image = menuImage(FileToolAppearance.image(for: .favoriteLocations, style: preferences.finderMenuIconStyle))
                 item.tag = actions.register([FileMenuAction(directory: directory,
                     favoriteAction: .locate(favorite.id))])[0]
                 submenu.addItem(item)
@@ -211,6 +216,20 @@ final class FinderSync: FIFinderSync {
             menu.addItem(root)
         }
         return menu
+    }
+
+    private static func currentMenuForeground() -> MonochromeMenuForeground {
+        // The extension never applies the main app's window-theme preference.
+        // Read effectiveAppearance on its owner thread, not the XPC thread's
+        // idle drawing appearance; transfer only the resolved black/white tone.
+        if Thread.isMainThread {
+            return MainActor.assumeIsolated {
+                MonochromeMenuForeground(appearance: NSApplication.shared.effectiveAppearance)
+            }
+        }
+        return DispatchQueue.main.sync {
+            MonochromeMenuForeground(appearance: NSApplication.shared.effectiveAppearance)
+        }
     }
 
     @objc private func performFavorite(_ item: NSMenuItem) {
