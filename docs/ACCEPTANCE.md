@@ -3,6 +3,18 @@
 Checked on 2026-09-14, macOS 26.6.2, Apple silicon. Minimum deployment target:
 macOS 13. Release bundles contain arm64 and x86_64 executables.
 
+## FileMint 0.6.3 release — 2026-09-30
+
+The user selected the standard publication workflow. The arm64/macOS 13+
+[0.6.3 release](RELEASE_VERIFICATION_0.6.3.md), build 22, passed local Developer ID
+signing, Apple notarization/stapling, mounted-DMG, sandbox entitlements and signed
+appcast checks. The published DMG, checksum and appcast were downloaded and
+compared byte for byte. Published-release verification, CI and website deployment
+passed. The unfinished exhaustive QA was not repeated; earlier native observations
+and the remaining installed Finder, public-feed 0.6.3 update and environment
+limitations are recorded in the linked release evidence. The installed app and
+owner preferences were unchanged in this publication turn.
+
 ## Background Copy Paths and global icon style QA — 2026-09-30
 
 Checked on macOS 27.2, Apple silicon, `0409f1a` plus the uncommitted

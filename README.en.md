@@ -10,11 +10,11 @@ Creating a file should not require opening an editor, choosing Save As and findi
 FileMint puts the action back in Finder: **right-click, choose a type and your file is there.**
 When you need a name, starter content, image processing or selected-item tools, the same native workflow continues.
 
-## What's new in 0.6.2
+## What's new in 0.6.3
 
-Explicitly choose **New File from Clipboard** to prefill a creation draft with plain text. Finder's **Open with App** also accepts the current folder, and configured terminals offer directory opening choices. The stable installer supports M-series Macs on macOS 13+; Intel users should stay on a compatible earlier release.
+Finder menu icons support system-symbol search, custom colors and a System Monochrome style that follows Finder's appearance. With **Copy Paths** enabled, an in-scope folder background also lets you copy the current folder's path. The stable installer supports M-series Macs on macOS 13+; Intel users should stay on a compatible earlier release.
 
-[0.6.2 release notes](https://github.com/FileMintApp/FileMint/releases/tag/v0.6.2)
+[0.6.3 release notes](https://github.com/FileMintApp/FileMint/releases/tag/v0.6.3)
 
 ## Recent features
 
@@ -25,7 +25,7 @@ Explicitly choose **New File from Clipboard** to prefill a creation draft with p
 - **Word / Excel templates**: Import `.docx` or `.xlsx` and create independent copies with the original formatting and content.
 - **Themes and settings**: General now offers Follow System, Light and Dark, with consistent control alignment and interaction styles.
 
-[Full release notes](https://github.com/FileMintApp/FileMint/releases/tag/v0.6.2)
+[Full release notes](https://github.com/FileMintApp/FileMint/releases/tag/v0.6.3)
 
 ## Why FileMint
 
@@ -131,7 +131,7 @@ Read the complete [privacy policy](PRIVACY.md).
 
 ## Install
 
-The 0.6.2 stable installer supports **M-series Macs on macOS 13+** only. Intel Macs cannot install or update to this version. Published installers through 0.5.10 keep their original compatibility.
+The 0.6.3 stable installer supports **M-series Macs on macOS 13+** only. Intel Macs cannot install or update to this version. Published installers through 0.5.10 keep their original compatibility.
 
 **Stable installers from 0.5.9 onward are Developer ID signed, Apple notarized and stapled.** First use still follows macOS prompts for Finder enablement and folder authorization.
 

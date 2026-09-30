@@ -10,11 +10,11 @@
 FileMint 把这件事放回 Finder：**右键，选一种类型，文件就在这里。**
 需要自己起名字、粘贴内容、处理图片或整理已选项目时，仍然从同一个原生工作流继续。
 
-## 0.6.2 更新
+## 0.6.3 更新
 
-主动选择“从剪贴板新建”可将纯文本预填到创建面板；Finder 的“使用 App 打开”也支持当前文件夹，已配置的终端可选择目录打开方式。正式安装包支持 macOS 13+ 的 M 系列 Mac；Intel 用户继续使用兼容的旧版。
+Finder 菜单图标支持搜索系统符号、自定义配色，并可切换为跟随 Finder 外观的系统单色。开启“拷贝路径”后，在菜单显示范围内的文件夹空白处也能拷贝当前路径。正式安装包支持 macOS 13+ 的 M 系列 Mac；Intel 用户继续使用兼容的旧版。
 
-[0.6.2 发布说明](https://github.com/FileMintApp/FileMint/releases/tag/v0.6.2)
+[0.6.3 发布说明](https://github.com/FileMintApp/FileMint/releases/tag/v0.6.3)
 
 ## 近期功能
 
@@ -25,7 +25,7 @@ FileMint 把这件事放回 Finder：**右键，选一种类型，文件就在�
 - **Word / Excel 模板**：导入 `.docx`、`.xlsx`，创建保留原格式和内容的独立副本。
 - **主题与设置**：通用页新增跟随系统、浅色和深色，统一控件对齐与交互样式。
 
-[完整发布说明](https://github.com/FileMintApp/FileMint/releases/tag/v0.6.2)
+[完整发布说明](https://github.com/FileMintApp/FileMint/releases/tag/v0.6.3)
 
 ## 为什么是 FileMint
 
@@ -131,7 +131,7 @@ Finder 菜单图标可选择彩色或系统单色；支持自定义的菜单和�
 
 ## 下载与安装
 
-0.6.2 正式安装包仅支持 **macOS 13+ 的 M 系列 Mac**，Intel Mac 无法安装或更新至此版。已发布的 0.5.10 及更早版本仍保留各自原有兼容范围。
+0.6.3 正式安装包仅支持 **macOS 13+ 的 M 系列 Mac**，Intel Mac 无法安装或更新至此版。已发布的 0.5.10 及更早版本仍保留各自原有兼容范围。
 
 **0.5.9 及后续正式版安装包使用 Developer ID 签名，通过 Apple 公证并附加公证票据。** 首次使用仍需按系统提示启用 Finder 扩展和文件夹授权。
 

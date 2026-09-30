@@ -1,7 +1,7 @@
 # Task: FileMint 0.6.3 release
 
-Status: in-progress
-Next action: Commit and tag the verified preparation, then run release-local and publish-local.
+Status: complete
+Next action: None for the selected standard publication scope; retain the remaining native QA limitations.
 
 ## Objective and scope
 
@@ -50,13 +50,17 @@ Current checks: `1926822` plus release preparation and QA-script repairs,
 | Native settings, icon rendering, creation, templates and image panels | not-run this publication turn | Earlier observations retained under `build/qa-0.6.3/`; exhaustive installed Finder checks remain incomplete |
 | Sandbox file operations and update checks | not-run this publication turn | Earlier sandbox and signed replacement/relaunch observations retained under `build/qa-0.6.3/`; they are not evidence for the final notarized DMG |
 | Installed Finder behavior, macOS 13 and clean-Mac acceptance | not-run | Outside the selected routine-release scope; no new installation or permission changes |
-| Notarization, final DMG and appcast | not-run | Pending |
-| Public upload and remote verification | not-run | Local artifact checks must pass first |
+| Notarization, final DMG and appcast | passed | `make release-local`, release commit `5d4d0fa`, notarization `b43741cf-3123-4c1c-b5ef-4a4c92889c0d` Accepted; final SHA-256 and artifact checks in the release evidence |
+| Public upload and remote verification | passed | `make publish-local`, three assets downloaded and compared byte for byte; release verification, CI and website deployment passed |
+
+Final source: `v0.6.3` at `5d4d0fa17a2cfac85231df816ee6bf3dc4b3f584`.
+Publication and runtime boundaries are recorded in
+[release verification](../RELEASE_VERIFICATION_0.6.3.md).
 
 ## Handoff
 
-- Remaining work: final source commit/tag, standard local release checks and
-  publication with remote readback.
-- Evidence logs belong under ignored `build/`; final results will be recorded
+- The selected release scope is complete. Remaining exhaustive native scenarios
+  stay unverified and are not represented as release passes.
+- Evidence logs remain under ignored `build/`; final results are recorded
   in `docs/RELEASE_VERIFICATION_0.6.3.md` and acceptance history.
 - Do not weaken a failed check or count old evidence as a current pass.
