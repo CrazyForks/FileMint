@@ -9,6 +9,8 @@ OPEN_WITH_FIXTURE="$(mktemp -d "$PWD/build/open-with-harness.noindex/run.XXXXXX"
 OPEN_WITH_APP="$OPEN_WITH_FIXTURE/OpenWithSmoke.app"
 OPEN_WITH_RECEIVER="$OPEN_WITH_APP/Contents/Resources/OpenWithReceiver.app"
 mkdir -p "$OPEN_WITH_APP/Contents/MacOS" "$OPEN_WITH_RECEIVER/Contents/MacOS"
+cp Resources/SFSymbolNames.txt Resources/SFSymbolRestrictedNames.txt \
+  Resources/SFSymbolCatalog-LICENSE.txt "$OPEN_WITH_APP/Contents/Resources/"
 python3 - "$OPEN_WITH_APP" "$OPEN_WITH_RECEIVER" "$OPEN_WITH_FIXTURE" <<'PY'
 import pathlib, plistlib, sys
 app, receiver, root = map(pathlib.Path, sys.argv[1:])
@@ -36,6 +38,7 @@ swiftc -swift-version 6 -parse-as-library -target "arm64-apple-macos13.0" -D OPE
 codesign --force --sign - --timestamp=none "$OPEN_WITH_RECEIVER"
 swiftc -swift-version 6 -parse-as-library -target "arm64-apple-macos13.0" \
   App/FileMint/DesignSystem.swift App/FileMint/ResourceToolsController.swift App/FileMint/ResourceToolsView.swift \
+  App/FileMint/MenuIconControl.swift App/FileMint/SystemSymbolCatalog.swift scripts/native_qa_preferences.swift \
   App/FileMint/PlainTextEditor.swift SharedUI/CustomFileSavePanelController.swift SharedUI/FolderAccess.swift \
   SharedUI/FileToolAppearance.swift \
   App/FileMint/FavoriteLocationsModel.swift App/FileMint/FavoriteQuickPanelController.swift \

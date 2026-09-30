@@ -1,16 +1,22 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
+export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 swift build --package-path CorePackage
 CORE_BUILD="$(swift build --package-path CorePackage --show-bin-path)"
+if [[ -f "$CORE_BUILD/libFileMintCore.a" ]]; then
+  CORE_LINK=(-I "$CORE_BUILD" "$CORE_BUILD/libFileMintCore.a")
+else
+  CORE_LINK=(-I "$CORE_BUILD/Modules" "$CORE_BUILD"/FileMintCore.build/*.o)
+fi
 mkdir -p "$PWD/build/update-sandbox-harness.noindex"
 SMOKE_DIRECTORY="$(mktemp -d "$PWD/build/update-sandbox-harness.noindex/run.XXXXXX")"
 APP_PATH="$SMOKE_DIRECTORY/FileMintUpdateSandboxSmoke.app"
 mkdir -p "$APP_PATH/Contents/MacOS"
 cp scripts/update-sandbox-smoke/Info.plist "$APP_PATH/Contents/Info.plist"
-swiftc -swift-version 6 -parse-as-library -I "$CORE_BUILD/Modules" \
+swiftc -swift-version 6 -parse-as-library \
   App/FileMint/UpdateClient.swift scripts/update_sandbox_smoke.swift \
-  "$CORE_BUILD"/FileMintCore.build/*.o -o "$APP_PATH/Contents/MacOS/FileMintUpdateSandboxSmoke"
+  "${CORE_LINK[@]}" -o "$APP_PATH/Contents/MacOS/FileMintUpdateSandboxSmoke"
 codesign --force --options runtime --sign - --timestamp=none \
   --entitlements scripts/update-sandbox-smoke/entitlements.plist "$APP_PATH"
 codesign --verify --strict "$APP_PATH"

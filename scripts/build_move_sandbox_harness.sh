@@ -8,6 +8,9 @@ mkdir -p build/move-sandbox-harness.noindex
 SMOKE_DIRECTORY="$(mktemp -d "$PWD/build/move-sandbox-harness.noindex/run.XXXXXX")"
 APP_PATH="$SMOKE_DIRECTORY/FileMintMoveSandboxSmoke.app"
 mkdir -p "$APP_PATH/Contents/MacOS" "$SMOKE_DIRECTORY/fixtures/source/Demo.app/Contents" "$SMOKE_DIRECTORY/fixtures/target"
+mkdir -p "$APP_PATH/Contents/Resources"
+cp Resources/SFSymbolNames.txt Resources/SFSymbolRestrictedNames.txt \
+  Resources/SFSymbolCatalog-LICENSE.txt "$APP_PATH/Contents/Resources/"
 python3 - "$APP_PATH" "$SMOKE_DIRECTORY" <<'PY'
 import pathlib, plistlib, sys
 app, root = map(pathlib.Path, sys.argv[1:])
@@ -27,11 +30,13 @@ else
 fi
 swiftc -swift-version 6 -parse-as-library \
   App/FileMint/DesignSystem.swift App/FileMint/ResourceToolsController.swift App/FileMint/ResourceToolsView.swift \
+  App/FileMint/MenuIconControl.swift App/FileMint/SystemSymbolCatalog.swift scripts/native_qa_preferences.swift \
   App/FileMint/PlainTextEditor.swift SharedUI/CustomFileSavePanelController.swift SharedUI/FolderAccess.swift \
   SharedUI/FileToolAppearance.swift \
   App/FileMint/FavoriteLocationsModel.swift App/FileMint/FavoriteQuickPanelController.swift \
   App/FileMint/FavoriteFeedbackController.swift \
-  App/FileMint/FileOperationCoordinator.swift App/FileMint/OpenWithApplicationAccess.swift scripts/move_sandbox_smoke.swift \
+  App/FileMint/FileOperationCoordinator.swift App/FileMint/OpenWithApplicationAccess.swift \
+  App/FileMint/TerminalDirectoryLauncher.swift scripts/move_sandbox_smoke.swift \
   "${CORE_LINK[@]}" -o "$APP_PATH/Contents/MacOS/FileMintMoveSandboxSmoke"
 codesign --force --options runtime --sign - --timestamp=none \
   --entitlements "$SMOKE_DIRECTORY/entitlements.plist" "$APP_PATH"

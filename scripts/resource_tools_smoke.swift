@@ -5,13 +5,6 @@ import ImageIO
 import SwiftUI
 import FileMintCore
 
-/// A stand-in for settings only. It never reads the owner's preferences.
-@MainActor
-final class PreferencesModel: ObservableObject {
-    @Published var preferences = FileMintPreferences.default
-    func save() {}
-}
-
 @MainActor
 final class FileOperationCoordinator {
     static let shared = FileOperationCoordinator()

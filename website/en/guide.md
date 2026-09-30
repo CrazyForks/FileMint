@@ -76,7 +76,7 @@ Open **Extensions → File & Folder Tools**, enable the master switch, then enab
 
 <p class="guide-caption">This is an example with tools enabled. Check the Permanent Delete setting before using it.</p>
 
-- **Copy Names / Paths:** Select one or more items, then use the context menu. Multiple items are copied one per line.
+- **Copy Names / Paths:** Select one or more items, then use the context menu. Multiple items are copied one per line. With Copy Paths enabled, you can also right-click an in-scope folder background to copy that folder's full path.
 - **Move File / Folder:** Select the source items and choose this action. Then right-click the **background of the destination folder** and choose **Move Selected Items Here**. The first step only remembers the sources; existing names are never overwritten or merged.
 - **Delete Permanently:** Bypasses Trash and asks for confirmation by default. It cannot be undone. Enable it only when you need it.
 - **AirDrop / Send Alias to Desktop:** AirDrop opens the native macOS chooser so you select a recipient. An alias points to the original item without moving it.
@@ -128,12 +128,14 @@ Choose local images in **Resource Tools → Use Tools**, or select images in Fin
 
 Under **General → Appearance**, choose Follow System, Light or Dark, plus English, Chinese or the system language. **About** has a manual update check. Automatic checks can be disabled in **General**. See the [installation guide](./install#later-updates) for update installation steps.
 
+**Finder Menu Icons** offers Colored and System Monochrome. Monochrome follows Finder's appearance and menu highlighting; saved colors return when you switch back to Colored. Click the icon button beside a template or supported menu entry to search system symbols, preview an icon, change its colors or reset it. You can still change symbols in monochrome mode while the color controls are disabled. Configured Open with App entries retain their application icons.
+
 ## If something is not working
 
 **No New File menu in Finder:** Check the Finder extension status in FileMint and enable its macOS switch if needed. Confirm that you clicked inside the configured menu scope. If the menu has not refreshed after a permission change, relaunch Finder. You can still use **New File…** in the main app.
 
 **The menu appears, but saving asks for access:** Follow FileMint's prompt and select the working folder in the system folder picker. Full Disk Access and FileMint's saved folder authorization are different. The Full Disk Access guide staying visible does not mean its system switch is off.
 
-**An action is missing:** Right-click in the right place: a folder background for creation, selected items for File & Folder Tools, a selected item or folder background for Open with App, and supported selected images for Resource Tools. Then check the module switch, action switch and main-menu/submenu placement.
+**An action is missing:** Right-click in the right place: a folder background for creation, selected items for most File & Folder Tools, a selected item or folder background for Copy Paths and Open with App, and supported selected images for Resource Tools. Then check the module switch, action switch and main-menu/submenu placement.
 
 Still stuck? Open a [GitHub issue](https://github.com/FileMintApp/FileMint/issues) with your macOS and FileMint versions, the entry point you used, and the message you saw. Please leave out private file contents and full paths.

@@ -7,7 +7,9 @@ RESOURCE_BUILD="$(swift build --package-path CorePackage --show-bin-path)"
 mkdir -p build/resource-tools-harness.noindex
 RESOURCE_FIXTURE="$(mktemp -d "$PWD/build/resource-tools-harness.noindex/run.XXXXXX")"
 RESOURCE_APP="$RESOURCE_FIXTURE/FileMintResourceQA.app"
-mkdir -p "$RESOURCE_APP/Contents/MacOS"
+mkdir -p "$RESOURCE_APP/Contents/MacOS" "$RESOURCE_APP/Contents/Resources"
+cp Resources/SFSymbolNames.txt Resources/SFSymbolRestrictedNames.txt \
+  Resources/SFSymbolCatalog-LICENSE.txt "$RESOURCE_APP/Contents/Resources/"
 plutil -create xml1 "$RESOURCE_APP/Contents/Info.plist"
 plutil -insert CFBundleIdentifier -string io.github.daigua.filemint.resource-qa "$RESOURCE_APP/Contents/Info.plist"
 plutil -insert CFBundleName -string 'FileMint Resource QA' "$RESOURCE_APP/Contents/Info.plist"
@@ -22,6 +24,7 @@ else
 fi
 swiftc -swift-version 6 -parse-as-library \
   App/FileMint/DesignSystem.swift App/FileMint/ResourceToolsController.swift App/FileMint/ResourceToolsView.swift \
+  App/FileMint/MenuIconControl.swift App/FileMint/SystemSymbolCatalog.swift scripts/native_qa_preferences.swift \
   App/FileMint/PlainTextEditor.swift SharedUI/CustomFileSavePanelController.swift SharedUI/FolderAccess.swift \
   SharedUI/FileToolAppearance.swift \
   scripts/resource_tools_smoke.swift "${RESOURCE_LINK[@]}" \

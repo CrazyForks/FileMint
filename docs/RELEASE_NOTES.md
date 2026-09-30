@@ -1,3 +1,29 @@
+# FileMint 0.6.3
+
+## 新功能与改进
+
+- **Finder 菜单图标自定义**：为新建文件、模板和支持的工具菜单选择系统符号及配色，支持搜索、预览和恢复默认。使用 App 打开的应用项仍保留应用自身图标。
+- **系统单色图标**：在“通用 → 外观 → Finder 菜单图标”选择“彩色”或“系统单色”。单色图标跟随 Finder 的外观和菜单高亮；切回彩色后保留原有符号与配色。
+- **拷贝当前文件夹路径**：启用文件（夹）工具和“拷贝路径”后，可在菜单显示范围内的 Finder 文件夹空白处右键，拷贝当前文件夹的完整路径。
+
+## 系统要求与升级
+
+0.6.3 正式安装包面向运行 macOS 13 或更新版本的 M 系列 Mac，不含 Intel 代码。运行 0.6.2 的 M 系列用户可通过“关于 → 检查更新 → 更新并重启”升级。现有文件、模板和菜单设置会保留，Finder 菜单图标默认沿用彩色样式。
+
+0.5.7/0.5.8 用户仍需先手动安装 0.5.9 或更新版本一次，修复旧版自身无法修复的更新器签名权限问题。
+
+## New features and improvements
+
+- **Custom Finder menu icons**: Choose a system symbol and colors for New File, templates and supported tool menus, with search, preview and reset. Configured Open with App entries retain their application icons.
+- **System Monochrome icons**: Choose Colored or System Monochrome under **General → Appearance → Finder Menu Icons**. Monochrome follows Finder's appearance and menu highlighting; switching back to Colored preserves the saved symbols and colors.
+- **Copy the current folder path**: Enable File & Folder Tools and Copy Paths, then right-click an in-scope Finder folder background to copy that folder's full path.
+
+## System requirements and upgrading
+
+The 0.6.3 stable installer targets M-series Macs running macOS 13 or later and contains no Intel code. M-series users on 0.6.2 can upgrade through **About → Check for Updates → Update and Restart**. Existing files, templates and menu settings are preserved; Finder menu icons keep Colored as the default.
+
+Versions 0.5.7/0.5.8 still require one manual installation of 0.5.9 or later to fix updater signing permissions that those versions cannot repair themselves.
+
 # FileMint 0.6.2
 
 ## 新功能

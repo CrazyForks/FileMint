@@ -85,7 +85,7 @@ Select an image in Finder and open Resource Tools, or choose a local image expli
 
 The module starts off. Once enabled, each action can live directly in Finder's main menu or inside **File & Folder Tools**:
 
-- **Copy File / Folder Names and Paths**: one line per selected item; the clipboard changes only when you choose the command.
+- **Copy File / Folder Names and Paths**: one line per selected item; Copy Paths also accepts an in-scope folder background. The clipboard changes only when you choose the command.
 - **Move File / Folder**: capture sources first, then confirm at the target folder background. Nothing moves silently.
 - **Delete Permanently**: confirmation by default, bypasses Trash and never follows a selected symlink.
 - **AirDrop**: opens macOS's native recipient UI; it never sends automatically.
@@ -104,6 +104,8 @@ The persistent sidebar groups settings by job:
 - **Preferences**: General, Finder & Folders, About.
 
 Each page has a clear responsibility, optional modules can be disabled independently, and arrow keys move between pages. General → Appearance offers Follow System, Light and Dark; Follow System is the default.
+
+Finder menu icons offer Colored and System Monochrome styles. Supported menus and templates also let you search system symbols, change colors or reset to the default. Monochrome preserves saved colors for when you switch back to Colored.
 
 ## Use it
 

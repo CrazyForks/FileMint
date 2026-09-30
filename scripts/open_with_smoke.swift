@@ -2,17 +2,6 @@ import AppKit
 import FileMintCore
 import SwiftUI
 
-#if !OPEN_WITH_RECEIVER
-/// The fixture coordinator reads its injected preferences file. UI dependencies
-/// use this stand-in and never initialize the real settings singleton.
-@MainActor
-final class PreferencesModel: ObservableObject {
-    static let shared = PreferencesModel()
-    @Published var preferences = FileMintPreferences.default
-    func save() {}
-}
-#endif
-
 /// A real receiver app proves that NSWorkspace delivered the complete selection.
 /// Both modes use only disposable fixture files, never the user's preferences.
 @main
