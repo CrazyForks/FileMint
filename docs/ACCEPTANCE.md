@@ -3,6 +3,16 @@
 Checked on 2026-09-14, macOS 26.6.2, Apple silicon. Minimum deployment target:
 macOS 13. Release bundles contain arm64 and x86_64 executables.
 
+## FileMint 0.6.4 release — 2026-09-30
+
+The arm64/macOS 13+ [0.6.4 release](RELEASE_VERIFICATION_0.6.4.md), build 23,
+passed the standard local signing, notarization, stapling, mounted-DMG,
+entitlement and signed-appcast gates. Published DMG, checksum and appcast bytes
+matched their local originals, and the release-verification, CI and website jobs
+passed. The release and fix commit associate issue #5, which is now closed.
+Earlier user-confirmed real Finder acceptance of the same icon code remains
+below; this publication did not repeat installation or screenshots.
+
 ## Finder monochrome system appearance fix — 2026-09-30
 
 Checked on macOS 27.2, Apple silicon, `1dde45f` plus the uncommitted

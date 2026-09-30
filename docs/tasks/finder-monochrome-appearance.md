@@ -1,7 +1,7 @@
 # Task: Adaptive monochrome Finder menu icons
 
 Status: complete (implementation, automated checks and user-confirmed real Finder acceptance)
-Next action: None for this fix; Git delivery/distribution follows a separate request.
+Next action: None. Published in FileMint 0.6.4 / build 23.
 
 ## Objective and scope
 
@@ -72,3 +72,12 @@ Local logs/readback: `build/qa-2026-09-30-monochrome/` (ignored).
 - Native limitation: no separate macOS 13 runtime or clean-install/notarization
   acceptance was performed.
 - Issue reply/publication is outside this task.
+
+## Publication follow-up
+
+The user subsequently requested build/publication and issue association. Fix
+commit `868bd8f` references `Fixes #5`; release tag `v0.6.4` points to `ccb3e87`.
+The standard signed/notarized release was published, all three remote assets
+matched their local originals, and release verification, CI and website
+deployment passed. Issue #5 is closed; no issue comment was sent. See
+[0.6.4 release evidence](../RELEASE_VERIFICATION_0.6.4.md).
