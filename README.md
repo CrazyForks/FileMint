@@ -183,6 +183,13 @@ Finder 菜单图标可选择彩色或系统单色；支持自定义的菜单和�
 - [ ] **故障指引与兼容性说明** — 菜单未出现或无法创建时给出具体建议，持续补充云盘和外置磁盘的验证结果。
 
 </div>
+<div class="roadmap-group">
+
+### 安装与分发
+
+- [ ] **Homebrew 安装支持** — 规划由 FileMint 维护的 tap，支持通过 brew 安装和升级；尚未实现。
+
+</div>
 <!-- #endregion roadmap -->
 
 每项的实现思路和完成条件记录在[实施路线](docs/ROADMAP.md)。欢迎通过 [Issues](https://github.com/FileMintApp/FileMint/issues) 分享场景，也欢迎贡献模板、翻译和复现步骤。

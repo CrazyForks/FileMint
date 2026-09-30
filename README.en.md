@@ -183,6 +183,13 @@ These are unfinished directions only; the list changes with real use and feedbac
 - [ ] **Troubleshooting and compatibility notes** — Get specific help when menus or creation fail, with verified cloud-folder and external-drive notes.
 
 </div>
+<div class="roadmap-group">
+
+### Installation and distribution
+
+- [ ] **Homebrew installation** — A planned FileMint-maintained tap for installing and upgrading with brew; not yet implemented.
+
+</div>
 <!-- #endregion roadmap -->
 
 Implementation notes and completion criteria live in the [implementation roadmap (Chinese)](docs/ROADMAP.md). Share recurring file-creation needs through [Issues](https://github.com/FileMintApp/FileMint/issues), or contribute templates, translations and reproduction steps.
