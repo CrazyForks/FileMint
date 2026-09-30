@@ -24,6 +24,11 @@ The 0.6.3 stable installer targets M-series Macs running macOS 13 or later and c
 
 Versions 0.5.7/0.5.8 still require one manual installation of 0.5.9 or later to fix updater signing permissions that those versions cannot repair themselves.
 
+## 关联问题
+
+- [#3：菜单图标切换与 macOS 风格图标](https://github.com/FileMintApp/FileMint/issues/3)
+- [#1：文件夹空白处右键拷贝当前路径](https://github.com/FileMintApp/FileMint/issues/1)
+
 # FileMint 0.6.2
 
 ## 新功能
